@@ -1,0 +1,106 @@
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+// particle_gun_source.cpp — Phlex source plugin
+//
+// Provides MCParticle vectors from a configurable particle gun.
+// Each event generates a single particle with fixed or randomised kinematics.
+
+#include <Random123/philox.h>
+
+#include <SHiP/MCParticle.hpp>
+#include <cmath>
+#include <cstdint>
+#include <vector>
+
+#include "phlex/core/product_query.hpp"
+#include "phlex/model/data_cell_index.hpp"
+#include "phlex/source.hpp"
+
+namespace {
+
+// Counter-based RNG: deterministic per event, no shared state.
+struct PhiloxRng {
+  r123::Philox4x32 rng;
+  r123::Philox4x32::ctr_type ctr;
+  r123::Philox4x32::key_type key;
+  int idx = 4;
+
+  explicit PhiloxRng(std::uint32_t seed) {
+    key = {{seed, 0xBEEFCAFE}};
+    ctr = {{0, 0, 0, 0}};
+  }
+
+  double uniform() {
+    if (idx >= 4) {
+      auto result = rng(ctr, key);
+      for (int i = 0; i < 4; ++i) ctr[i] = result[i];
+      ctr[0]++;
+      idx = 0;
+    }
+    // Convert to [0, 1)
+    return ctr[idx++] * (1.0 / 4294967296.0);
+  }
+
+  double uniform(double lo, double hi) { return lo + (hi - lo) * uniform(); }
+};
+
+class ParticleGun {
+ public:
+  ParticleGun(int pdg, double p_min, double p_max, double max_theta,
+              std::array<double, 3> vertex)
+      : pdg_{pdg},
+        p_min_{p_min},
+        p_max_{p_max},
+        max_theta_{max_theta},
+        vertex_{vertex} {}
+
+  std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
+    auto event_number = static_cast<std::uint32_t>(id.number());
+    PhiloxRng rng{event_number};
+
+    double p = rng.uniform(p_min_, p_max_);
+    double theta = rng.uniform(0.0, max_theta_);
+    double phi = rng.uniform(0.0, 2.0 * M_PI);
+
+    SHiP::MCParticle mc;
+    mc.pdgCode = pdg_;
+    mc.vertex = vertex_;
+    mc.momentum = {p * std::sin(theta) * std::cos(phi),
+                   p * std::sin(theta) * std::sin(phi), p * std::cos(theta)};
+    // Assume massless for energy (good enough for muons at high p)
+    mc.energy = p;
+    mc.time = 0.0;
+    mc.motherId = -1;
+    mc.status = 1;
+
+    return {mc};
+  }
+
+ private:
+  int pdg_;
+  double p_min_, p_max_, max_theta_;
+  std::array<double, 3> vertex_;
+};
+
+}  // namespace
+
+PHLEX_REGISTER_PROVIDERS(s, config) {
+  using namespace phlex;
+
+  auto pdg = config.get<int>("pdg", 13);           // muon
+  auto p_min = config.get<double>("p_min", 10.0);  // GeV
+  auto p_max = config.get<double>("p_max", 100.0);
+  auto max_theta = config.get<double>("max_theta", 0.1);  // rad
+  auto vx = config.get<double>("vertex_x", 0.0);
+  auto vy = config.get<double>("vertex_y", 0.0);
+  auto vz = config.get<double>("vertex_z", -500.0);  // mm, upstream of target
+
+  auto gun = s.make<ParticleGun>(pdg, p_min, p_max, max_theta,
+                                 std::array<double, 3>{vx, vy, vz});
+
+  gun.provide("generate", &ParticleGun::generate, concurrency::unlimited)
+      .output_product(
+          product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+}
