@@ -14,6 +14,8 @@
 //   - Per phlex-thread: G4WorkerRunManagerKernel + G4EventManager for tracking
 //   - No G4VUserPrimaryGeneratorAction — events built directly from MCParticle
 
+#include <spdlog/spdlog.h>
+
 #include <G4Event.hh>
 #include <G4EventManager.hh>
 #include <G4MTRunManager.hh>
@@ -28,7 +30,6 @@
 #include <G4TransportationManager.hh>
 #include <G4UImanager.hh>
 #include <G4VUserActionInitialization.hh>
-#include <spdlog/spdlog.h>
 #include <G4VUserPrimaryGeneratorAction.hh>
 #include <G4WorkerRunManagerKernel.hh>
 #include <G4WorkerThread.hh>

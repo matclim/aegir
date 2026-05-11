@@ -10,6 +10,7 @@
 
 #include <Pythia8/Pythia.h>
 #include <Pythia8/PythiaParallel.h>
+#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <condition_variable>
@@ -22,8 +23,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <spdlog/spdlog.h>
 
 #include "phlex/core/product_query.hpp"
 #include "phlex/model/data_cell_index.hpp"

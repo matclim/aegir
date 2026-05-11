@@ -12,6 +12,7 @@
 
 #include <Pythia8/Pythia.h>
 #include <Random123/philox.h>
+#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <cmath>
@@ -19,8 +20,6 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
-
-#include <spdlog/spdlog.h>
 
 #include "phlex/core/product_query.hpp"
 #include "phlex/model/data_cell_index.hpp"
