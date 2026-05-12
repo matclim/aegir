@@ -82,10 +82,6 @@ target_include_directories(
 )
 
 # GeoModel geometry provider plugin (optional)
-# mp-units and Microsoft.GSL are transitive deps of SHiPGeometryService
-# not declared in its config file — find them first.
-find_package(Microsoft.GSL QUIET)
-find_package(mp-units CONFIG QUIET)
 find_package(SHiPGeometryService CONFIG QUIET)
 if(SHiPGeometryService_FOUND)
     message(

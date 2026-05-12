@@ -8,6 +8,8 @@
 
 #include <G4LogicalVolume.hh>
 #include <G4PVPlacement.hh>
+#include <cstdlib>
+#include <filesystem>  // NOLINT(build/c++17)
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -60,6 +62,19 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   using namespace phlex;
 
   auto db_file = config.get<std::string>("db_file");
+
+  // Resolve relative/bare filenames via SHIPGEOMETRY_ROOT
+  if (!std::filesystem::exists(db_file)) {
+    if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT")) {
+      auto name = std::filesystem::path(db_file).filename().string();
+      auto candidate =
+          std::string(root) + "/share/geometry/" + name;
+      if (std::filesystem::exists(candidate)) {
+        db_file = std::move(candidate);
+      }
+    }
+  }
+
   auto sv = config.get<std::vector<std::string>>("sensitive_volumes");
 
   auto source =
