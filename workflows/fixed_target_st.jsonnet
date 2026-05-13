@@ -8,7 +8,7 @@
   sources: {
     geometry: {
       cpp: 'geometry_geomodel_provider',
-      db_file: '../geometry-target-only/build/apps/ship_geometry.db',
+      db_file: 'ship_geometry.db',
       sensitive_volumes: ['ScoringPlane'],
     },
     pythia8: {
