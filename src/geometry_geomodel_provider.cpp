@@ -67,8 +67,7 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   if (!std::filesystem::exists(db_file)) {
     if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT")) {
       auto name = std::filesystem::path(db_file).filename().string();
-      auto candidate =
-          std::string(root) + "/share/geometry/" + name;
+      auto candidate = std::string(root) + "/share/geometry/" + name;
       if (std::filesystem::exists(candidate)) {
         db_file = std::move(candidate);
       }
