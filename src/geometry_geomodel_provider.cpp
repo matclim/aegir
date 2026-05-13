@@ -63,15 +63,19 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
 
   auto db_file = config.get<std::string>("db_file");
 
-  // Resolve relative/bare filenames via SHIPGEOMETRY_ROOT
+  // Resolve relative/bare filenames via SHIPGEOMETRY_ROOT.
+  // .filename() intentionally strips subdirectory components — the geometry
+  // install layout is flat under share/geometry/.
   if (!std::filesystem::exists(db_file)) {
-    if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT")) {
-      auto name = std::filesystem::path(db_file).filename().string();
-      auto candidate = std::string(root) + "/share/geometry/" + name;
-      if (std::filesystem::exists(candidate)) {
-        db_file = std::move(candidate);
-      }
-    }
+    auto resolved = std::filesystem::path(db_file).filename();
+    if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT"))
+      resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
+    if (std::filesystem::exists(resolved))
+      db_file = resolved.string();
+    else
+      throw std::runtime_error(
+          "Cannot locate geometry DB '" + db_file +
+          "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
   }
 
   auto sv = config.get<std::vector<std::string>>("sensitive_volumes");
