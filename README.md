@@ -30,7 +30,7 @@ Phlex-based simulation framework for the SHiP experiment.
 ## Dependencies
 
 - [SHiPDataModel](https://github.com/ShipSoft/data-model) (event data classes)
-- [Phlex](https://github.com/Framework-Phlex/phlex) (+ Boost, TBB, spdlog)
+- [Phlex](https://github.com/Framework-R-D/phlex) (+ Boost, TBB, spdlog)
 - ROOT 6.36+ (Core, RIO, Hist, MathCore, ROOTNTuple)
 - Geant4 11.4+ (with multi-threading enabled)
 - Pythia8 8.3+
