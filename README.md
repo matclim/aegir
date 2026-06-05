@@ -37,7 +37,26 @@ Phlex-based simulation framework for the SHiP experiment.
 - Random123
 - Optional: SHiPGeometryService (for GeoModel geometry)
 
-## Building
+## Building with pixi (recommended)
+
+[Install pixi](https://pixi.sh) and run:
+
+```bash
+pixi install              # resolve dependencies from prefix.dev/ship + conda-forge
+pixi run build            # configure + build
+pixi run install          # install into the pixi environment prefix
+pixi run smoke            # quick end-to-end check
+```
+
+`pixi shell` drops you into an interactive shell with the environment activated;
+`PHLEX_PLUGIN_PATH`, `LD_LIBRARY_PATH`, and `SHIPGEOMETRY_ROOT` are set
+automatically (see [`activate.sh`](activate.sh)). The `just` benchmark targets
+are available in `pixi shell -e bench`.
+
+## Building manually (fallback)
+
+If you cannot use pixi (e.g. on systems still managed by aliBuild), the project
+is a plain CMake build:
 
 ```bash
 cmake -B build
@@ -49,7 +68,7 @@ Pass `-DSHiPDataModel_ROOT=/path/to/data-model/install` if not in the default se
 ## Running
 
 ```bash
-export PHLEX_PLUGIN_PATH="$PWD/build:$PHLEX_PLUGIN_PATH"
+export PHLEX_PLUGIN_PATH="$PWD/build:$PHLEX_PLUGIN_PATH"   # not needed under pixi
 
 # Particle gun only (no Geant4)
 phlex -c workflows/gun_only.jsonnet

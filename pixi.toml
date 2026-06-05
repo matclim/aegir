@@ -1,0 +1,55 @@
+[workspace]
+name = "aegir"
+description = "Phlex-based simulation framework for the SHiP experiment"
+channels = ["https://prefix.dev/ship", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+# SHiP/HEP packages (prefix.dev/ship + conda-forge)
+shipdatamodel = "*"
+shipgeometry = "*"
+shipgeometryservice = "*"
+phlex = "*"
+root = ">=6.36"
+geant4 = ">=11.3"
+pythia8 = ">=8.3"
+random123 = "*"
+jsonnet = "*"
+
+# C++ libraries
+libboost-devel = "*"
+tbb-devel = "*"
+spdlog = "*"
+fmt = "*"
+mp-units = "*"
+ms-gsl = "*"
+
+# Build tools
+cmake = ">=3.27"
+ninja = "*"
+cxx-compiler = "*"
+
+[activation]
+scripts = ["activate.sh"]
+
+[tasks]
+configure = { cmd = """
+cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
+""" }
+build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
+install = { cmd = "cmake --install build", depends-on = ["build"] }
+test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
+smoke = { cmd = "scripts/smoke.sh", depends-on = ["build"] }
+clean = "rm -rf build"
+
+[feature.bench.dependencies]
+hyperfine = "*"
+just = "*"
+
+[environments]
+default = { solve-group = "default" }
+bench = { features = ["bench"], solve-group = "default" }
