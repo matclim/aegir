@@ -29,46 +29,76 @@ Phlex-based simulation framework for the SHiP experiment.
 
 ## Dependencies
 
+Pixi resolves everything below from [`prefix.dev/ship`][ship-channel] (the
+SHiP-specific packages live there, with rattler-build recipes in
+[ship-conda-recipes][recipes]) and `conda-forge`. The list is reference; you
+do not need to install these manually when using pixi.
+
 - [SHiPDataModel](https://github.com/ShipSoft/data-model) (event data classes)
 - [Phlex](https://github.com/Framework-R-D/phlex) (+ Boost, TBB, spdlog)
 - ROOT 6.36+ (Core, RIO, Hist, MathCore, ROOTNTuple)
-- Geant4 11.4+ (with multi-threading enabled)
+- Geant4 11.3+ (with multi-threading enabled)
 - Pythia8 8.3+
 - Random123
 - Optional: SHiPGeometryService (for GeoModel geometry)
 
+[ship-channel]: https://prefix.dev/channels/ship
+[recipes]: https://github.com/ShipSoft/ship-conda-recipes
+
 ## Building with pixi (recommended)
 
-[Install pixi](https://pixi.sh) and run:
+[Install pixi](https://pixi.sh), then:
 
 ```bash
-pixi install              # resolve dependencies from prefix.dev/ship + conda-forge
+pixi install              # resolve dependencies (one-off)
 pixi run build            # configure + build
-pixi run install          # install into the pixi environment prefix
-pixi run smoke            # quick end-to-end check
 ```
 
-`pixi shell` drops you into an interactive shell with the environment activated;
-`PHLEX_PLUGIN_PATH`, `LD_LIBRARY_PATH`, and `SHIPGEOMETRY_ROOT` are set
-automatically (see [`activate.sh`](activate.sh)). The `just` benchmark targets
-are available in `pixi shell -e bench`.
+`pixi run build` depends on `configure`, so you do not need to run them
+separately. Available tasks (see [`pixi.toml`](pixi.toml)):
 
-## Building manually (fallback)
+- `configure` — run CMake with `CMAKE_PREFIX_PATH=$CONDA_PREFIX`.
+- `build` — `cmake --build build -j`. Depends on `configure`.
+- `install` — `cmake --install build`, populating `$CONDA_PREFIX/lib` and `bin`.
+- `test` — `ctest --test-dir build --output-on-failure` (no-op until tests are added).
+- `smoke` — quick end-to-end check used by CI ([`scripts/smoke.sh`](scripts/smoke.sh)).
+- `clean` — `rm -rf build`.
 
-If you cannot use pixi (e.g. on systems still managed by aliBuild), the project
-is a plain CMake build:
+### `pixi run` vs `pixi shell`
+
+- `pixi run <task>` (or `pixi run <command>`) activates the environment for
+  the duration of one command. Use it for scripted invocations and CI.
+- `pixi shell` drops you into an interactive subshell with the environment
+  active until you `exit`. Use it for iterative development — `just`
+  targets, ad-hoc `phlex` invocations, debugging.
+
+`activate.sh` sets `PHLEX_PLUGIN_PATH`, `LD_LIBRARY_PATH`, `SHIPGEOMETRY_ROOT`,
+and `AEGIR_ROOT` automatically in both modes.
+
+## Building manually
+
+For environments without pixi (e.g. existing aliBuild setups), the project is a
+plain CMake build. You are responsible for providing the dependencies; see
+[ship-conda-recipes][recipes] for the canonical version pins.
 
 ```bash
 cmake -B build
 cmake --build build
 ```
 
-Pass `-DSHiPDataModel_ROOT=/path/to/data-model/install` if not in the default search path.
+Pass `-DSHiPDataModel_ROOT=/path/to/data-model/install` if a dependency is not in
+the default search path.
 
 ## Running
 
+`workflows/` ships a sampler of jsonnet configs; the snippets below pick five
+common ones. `ls workflows/` shows the full set (multi-threaded variants, no-op
+sinks, GeoModel-based geometry, etc.).
+
+### From `pixi shell` (interactive)
+
 ```bash
-export PHLEX_PLUGIN_PATH="$PWD/build:$PHLEX_PLUGIN_PATH"   # not needed under pixi
+pixi shell
 
 # Particle gun only (no Geant4)
 phlex -c workflows/gun_only.jsonnet
@@ -86,13 +116,45 @@ phlex -c workflows/pythia8_st.jsonnet
 phlex -c workflows/fixed_target_mt.jsonnet
 ```
 
+### One-off via `pixi run`
+
+```bash
+pixi run phlex -c workflows/gun_only.jsonnet
+```
+
+### Manual environment (no pixi)
+
+If you built manually, point `PHLEX_PLUGIN_PATH` at the build tree yourself:
+
+```bash
+export PHLEX_PLUGIN_PATH="$PWD/build:$PHLEX_PLUGIN_PATH"
+phlex -c workflows/gun_only.jsonnet
+```
+
 ## Geometry
 
 Three geometry providers are available, selectable via workflow configuration:
 
-- **Builtin**: Tungsten target + Si scoring planes (default)
-- **GDML**: Load geometry from a GDML file
-- **GeoModel**: Load from a GeoModel `.db` file via SHiPGeometryService
+- **Builtin** (`geometry_builtin_provider`) — Tungsten target + Si scoring planes
+  (test geometry). Used by `workflows/gun_st.jsonnet` and friends. No setup
+  needed.
+- **GDML** (`geometry_gdml_provider`) — load from a `.gdml` file. Set `gdml_file`
+  in the workflow to an absolute path. Example: `workflows/gun_st_gdml.jsonnet`.
+- **GeoModel** (`geometry_geomodel_provider`) — load from a GeoModel `.db` file
+  via `SHiPGeometryService`. The `shipgeometry` conda package ships a
+  `build_geometry` tool but does not bundle a pre-built DB; you generate one
+  yourself:
+
+  ```bash
+  pixi run build_geometry          # writes ship_geometry.db to the CWD
+  pixi run phlex -c workflows/gun_st_geomodel.jsonnet
+  ```
+
+  Workflows reference the DB by bare filename (`db_file: 'ship_geometry.db'`);
+  the provider resolves it against the CWD first and, failing that, against
+  `$SHIPGEOMETRY_ROOT/share/geometry/`. `activate.sh` sets `SHIPGEOMETRY_ROOT`
+  to `$CONDA_PREFIX` by default, so dropping a DB under
+  `$CONDA_PREFIX/share/geometry/` makes it discoverable from any CWD.
 
 ## Geant4 integration
 
@@ -100,9 +162,11 @@ See [docs/geant4_integration.md](docs/geant4_integration.md) for details on the 
 
 ## Benchmarking
 
-See `docs/benchmarks.md` for details. Quick start:
+See `docs/benchmarks.md` for details. The benchmark targets need `hyperfine`
+and `just`, which the `bench` pixi feature provides:
 
 ```bash
+pixi shell -e bench
 just bench-geant4          # ST vs MT comparison
 just bench-geant4-threads  # Thread count sweep
 just bench-pythia8         # Standalone vs Phlex Pythia8
@@ -114,8 +178,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development workflow a
 
 ## Known issues
 
-- Geant4 bundles its own zlib, which conflicts with ROOT's system zlib. Build Geant4 with `-DGEANT4_USE_SYSTEM_ZLIB=ON`.
-- G4RunManager destruction accesses global singletons that may already be torn down during plugin unloading. The RunManager is intentionally leaked.
+- Geant4 bundles its own zlib, which conflicts with ROOT's system zlib. Build
+  Geant4 with `-DGEANT4_USE_SYSTEM_ZLIB=ON` — only relevant for manual builds;
+  the conda-forge `geant4` package already takes care of this.
+- G4RunManager destruction accesses global singletons that may already be torn
+  down during plugin unloading. The RunManager is intentionally leaked.
 
 ## Licence
 
