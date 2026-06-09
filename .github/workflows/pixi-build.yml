@@ -10,17 +10,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: prefix-dev/setup-pixi@v0.9.6
-      - name: Configure
-        run: pixi run --locked configure
-      - name: Build
-        run: pixi run --locked build
-      - name: Install
-        run: pixi run --locked install
-      - name: Test
-        run: pixi run --locked test
-      - name: Smoke test
-        run: pixi run --locked smoke
+    uses: ShipSoft/.github/.github/workflows/pixi-cmake-build.yml@main
+    with:
+      tasks: '["configure", "build", "install", "test", "smoke"]'
