@@ -14,7 +14,7 @@ root = ">=6.36"
 geant4 = ">=11.3"
 pythia8 = ">=8.3"
 random123 = "*"
-jsonnet = "*"
+libjsonnet = "*"
 
 # C++ libraries
 libboost-devel = "*"
