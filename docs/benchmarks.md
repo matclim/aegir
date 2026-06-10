@@ -148,3 +148,76 @@ just bench-scaling                         # event count sweep
 ```
 
 Results are exported to `bench-*.md` and `bench-*.json` (gitignored).
+
+## Tooling
+
+Activate the bench environment first: `pixi shell -e bench`. It installs
+`hyperfine`, `just`, `linux-perf`, and Python.
+
+### Per-event attribution (Chrome trace)
+
+Rebuild with tracing on, then run a small workflow:
+
+```sh
+cmake -S . -B build -DAEGIR_ENABLE_TRACE=ON
+pixi run build
+just profile-trace                           # default: gun_st_bench, 50 events
+just trace_workflow=gun_mt_bench trace_events=200 profile-trace
+```
+
+`trace_<workflow>.json` is a Chrome Trace Event JSON file. Open in
+<https://ui.perfetto.dev> directly. Spans emitted: `init_master`,
+`init_worker`, `simulate` (framework round-trip), `build_primaries`,
+`ProcessOneEvent` (raw Geant4 tracking), `flush_hits`. Counters
+`hits` and `particles` give per-event yields.
+
+Framework overhead per event = `simulate − ProcessOneEvent`. Useful for
+quantifying the phlex↔Geant4 integration cost.
+
+### Sample-based CPU profile (perf + flamegraph)
+
+```sh
+just profile-flamegraph                                # gun_st_bench, 500 events
+just profile_workflow=gun_mt_bench profile-flamegraph
+```
+
+Records at 99 Hz with DWARF call-graphs. If `flamegraph.pl` and
+`stackcollapse-perf.pl` are on `$PATH` (e.g. via `nix-shell -p
+flamegraph`), the recipe writes `flamegraph_<workflow>.svg`. Otherwise
+it prints the top of `perf report` to stdout.
+
+### Scaling sweep with per-event percentiles
+
+`scripts/run_benchmark.py` runs a thread × parallelism grid and emits
+both aggregate (real time, CPU efficiency, RSS) and per-event
+(`simulate`, `ProcessOneEvent`, framework overhead) metrics. Tracing is
+required for the per-event columns; without it those columns are blank.
+
+```sh
+just bench-sweep                                       # gun_mt, 1000 events
+just bench_workflow=fixed_target_mt bench-sweep        # SHiP-realistic
+```
+
+The sweep emits `benchmark_<workflow>.csv` and, with `--plot`, a PNG
+with four panels (real time vs threads, CPU efficiency vs parallelism,
+framework overhead vs threads, speedup vs baseline).
+
+### Saturated-throughput sweep
+
+A 1-thread measurement on an idle machine sees no cache or
+memory-bandwidth contention from siblings, so the resulting number
+overestimates what one slot delivers when the host is fully loaded.
+`--saturate` fixes that: for each thread count `T`, it launches
+`floor(num_cores / T)` parallel phlex processes, each pinned to a
+disjoint `T`-wide CPU slice via `taskset`, so every row of the sweep
+runs against a fully-loaded host.
+
+```sh
+just bench-sweep-saturated                             # default sweep
+```
+
+The extra `copies` and `cohort_wall_s` columns let you compute
+per-process throughput (`num_events / real_time_s` per copy) and
+cohort throughput (`copies * num_events / cohort_wall_s`). The gap
+between the idle-baseline 1T row and the saturated 1T row is the
+contention cost — typically 20–50 % on a busy server.

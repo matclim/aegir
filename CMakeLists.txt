@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(
+    AEGIR_ENABLE_TRACE
+    "Emit Chrome Trace Event JSON from the Geant4 module for profiling"
+    OFF
+)
+
 # Dependencies
 find_package(SHiPDataModel REQUIRED)
 
@@ -122,6 +128,9 @@ target_include_directories(
     geant4_module
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+if(AEGIR_ENABLE_TRACE)
+    target_compile_definitions(geant4_module PRIVATE AEGIR_ENABLE_TRACE)
+endif()
 
 # Pythia8 source plugin
 add_library(pythia8_source MODULE src/pythia8_source.cpp)

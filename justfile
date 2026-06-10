@@ -119,3 +119,69 @@ bench-gun-noop: build
         --reference-name 'gun noop (no G4)' \
         -n 'gun + G4 ST noop' 'PHLEX_PLUGIN_PATH={{plugin_path}} phlex -c <(jsonnet --ext-str events={{g4_events}} workflows/gun_st_bench.jsonnet)' \
         --export-markdown bench-gun-noop.md
+
+# --- Profiling / scaling sweep ---
+
+# Sweep thread × parallelism, emit CSV and PNG plots
+bench_workflow := "gun_mt"
+bench_g4_threads := "1 2 4 8"
+bench_parallelism := "1 2 4 8"
+bench_repeats := "5"
+bench_sweep_events := "1000"
+
+bench-sweep: build
+    PHLEX_PLUGIN_PATH={{plugin_path}} python3 scripts/run_benchmark.py \
+        --workflow {{bench_workflow}} \
+        --num-events {{bench_sweep_events}} \
+        --g4-threads {{bench_g4_threads}} \
+        --parallelism {{bench_parallelism}} \
+        --repeats {{bench_repeats}} \
+        --output benchmark_{{bench_workflow}}.csv \
+        --plot
+
+# Saturated-throughput sweep (fills the machine to stress small thread counts)
+bench-sweep-saturated: build
+    PHLEX_PLUGIN_PATH={{plugin_path}} python3 scripts/run_benchmark.py \
+        --workflow {{bench_workflow}} \
+        --num-events {{bench_sweep_events}} \
+        --g4-threads {{bench_g4_threads}} \
+        --parallelism {{bench_parallelism}} \
+        --repeats {{bench_repeats}} \
+        --saturate \
+        --output benchmark_{{bench_workflow}}_saturated.csv \
+        --plot
+
+# Sample-based CPU profile. Requires linux-perf (in the bench env) and
+# flamegraph.pl + stackcollapse-perf.pl on PATH (e.g. via
+# `nix-shell -p flamegraph` or your distro's flamegraph package). Falls
+# back to `perf report --stdio` if flamegraph.pl is unavailable.
+profile_workflow := "gun_st_bench"
+profile_events := "500"
+profile_freq := "99"
+
+profile-flamegraph: build
+    perf record -F {{profile_freq}} -g --call-graph=dwarf -o perf.data -- \
+        env PHLEX_PLUGIN_PATH={{plugin_path}} phlex -c \
+            <(jsonnet --ext-str events={{profile_events}} workflows/{{profile_workflow}}.jsonnet)
+    @if command -v flamegraph.pl >/dev/null && command -v stackcollapse-perf.pl >/dev/null; then \
+        perf script -i perf.data | stackcollapse-perf.pl | flamegraph.pl \
+            > flamegraph_{{profile_workflow}}.svg; \
+        echo "Wrote flamegraph_{{profile_workflow}}.svg"; \
+    else \
+        echo "flamegraph.pl not in PATH — printing perf report instead"; \
+        perf report -i perf.data --stdio | head -80; \
+        echo ""; \
+        echo "(install flamegraph for SVG output: nix-shell -p flamegraph)"; \
+    fi
+
+# Emit a Chrome trace from a short run. Open trace.json in
+# https://ui.perfetto.dev (loads Chrome Trace JSON natively). Requires
+# the binary to be built with `-DAEGIR_ENABLE_TRACE=ON`.
+trace_workflow := "gun_st_bench"
+trace_events := "50"
+
+profile-trace: build
+    AEGIR_TRACE_FILE=trace_{{trace_workflow}}.json \
+        PHLEX_PLUGIN_PATH={{plugin_path}} phlex -c \
+            <(jsonnet --ext-str events={{trace_events}} workflows/{{trace_workflow}}.jsonnet)
+    @echo "Wrote trace_{{trace_workflow}}.json — open in https://ui.perfetto.dev"

@@ -45,6 +45,7 @@
 #include <utility>
 #include <vector>
 
+#include "chrome_trace.hpp"
 #include "detector_construction.hpp"
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
@@ -98,6 +99,8 @@ class Geant4Sim {
 
   SHiP::SimResult simulate(std::shared_ptr<SHiP::IGeometrySource> const& geo,
                            std::vector<SHiP::MCParticle> const& particles) {
+    AEGIR_TRACE_EVENT("g4", "simulate");
+
     std::call_once(init_flag_, [this, &geo]() { init_master(geo); });
 
     if (!tl_kernel) init_worker();
@@ -107,39 +110,50 @@ class Geant4Sim {
     tl_track_map.clear();
 
     auto* event = new G4Event(next_event_id_.fetch_add(1));
-    for (auto const& mc : particles) {
-      auto [it, inserted] = tl_pdg_cache.try_emplace(mc.pdgCode, nullptr);
-      if (inserted)
-        it->second =
-            G4ParticleTable::GetParticleTable()->FindParticle(mc.pdgCode);
-      auto* def = it->second;
-      if (!def) continue;
-      double pmag = std::sqrt(mc.momentum[0] * mc.momentum[0] +
-                              mc.momentum[1] * mc.momentum[1] +
-                              mc.momentum[2] * mc.momentum[2]);
-      if (pmag <= 0) continue;
+    {
+      AEGIR_TRACE_EVENT("g4", "build_primaries");
+      for (auto const& mc : particles) {
+        auto [it, inserted] = tl_pdg_cache.try_emplace(mc.pdgCode, nullptr);
+        if (inserted)
+          it->second =
+              G4ParticleTable::GetParticleTable()->FindParticle(mc.pdgCode);
+        auto* def = it->second;
+        if (!def) continue;
+        double pmag = std::sqrt(mc.momentum[0] * mc.momentum[0] +
+                                mc.momentum[1] * mc.momentum[1] +
+                                mc.momentum[2] * mc.momentum[2]);
+        if (pmag <= 0) continue;
 
-      auto* vertex = new G4PrimaryVertex(mc.vertex[0] * mm, mc.vertex[1] * mm,
-                                         mc.vertex[2] * mm, mc.time * ns);
-      auto* particle =
-          new G4PrimaryParticle(def, mc.momentum[0] * GeV, mc.momentum[1] * GeV,
-                                mc.momentum[2] * GeV);
-      vertex->SetPrimary(particle);
-      event->AddPrimaryVertex(vertex);
+        auto* vertex = new G4PrimaryVertex(mc.vertex[0] * mm, mc.vertex[1] * mm,
+                                           mc.vertex[2] * mm, mc.time * ns);
+        auto* particle =
+            new G4PrimaryParticle(def, mc.momentum[0] * GeV,
+                                  mc.momentum[1] * GeV, mc.momentum[2] * GeV);
+        vertex->SetPrimary(particle);
+        event->AddPrimaryVertex(vertex);
+      }
     }
 
     // G4EventManager expects G4State_GeomClosed; it transitions to
     // G4State_EventProc internally and back when done.
     auto* state_mgr = G4StateManager::GetStateManager();
     state_mgr->SetNewState(G4State_GeomClosed);
-    tl_kernel->GetEventManager()->ProcessOneEvent(event);
+    {
+      AEGIR_TRACE_EVENT("g4", "ProcessOneEvent");
+      tl_kernel->GetEventManager()->ProcessOneEvent(event);
+    }
     state_mgr->SetNewState(G4State_GeomClosed);
 
     delete event;
 
     SHiP::SimResult result;
-    result.hits = std::move(tl_hits);
-    result.particles = std::move(tl_particles);
+    {
+      AEGIR_TRACE_EVENT("g4", "flush_hits");
+      AEGIR_TRACE_COUNTER("g4", "hits", tl_hits.size());
+      AEGIR_TRACE_COUNTER("g4", "particles", tl_particles.size());
+      result.hits = std::move(tl_hits);
+      result.particles = std::move(tl_particles);
+    }
     return result;
   }
 
@@ -153,31 +167,34 @@ class Geant4Sim {
 
     master_thread_ = std::thread([this, &ready_promise] {
       try {
-        auto* rm = new G4MTRunManager();
-        rm->SetNumberOfThreads(cfg_.concurrency);
-        rm->SetUserInitialization(detector_);
+        {
+          AEGIR_TRACE_EVENT("g4", "init_master");
+          auto* rm = new G4MTRunManager();
+          rm->SetNumberOfThreads(cfg_.concurrency);
+          rm->SetUserInitialization(detector_);
 
-        G4PhysListFactory factory;
-        auto* physics = factory.GetReferencePhysList(cfg_.physics_list);
-        if (!physics)
-          throw std::runtime_error("Unknown physics list: " +
-                                   cfg_.physics_list);
-        rm->SetUserInitialization(physics);
+          G4PhysListFactory factory;
+          auto* physics = factory.GetReferencePhysList(cfg_.physics_list);
+          if (!physics)
+            throw std::runtime_error("Unknown physics list: " +
+                                     cfg_.physics_list);
+          rm->SetUserInitialization(physics);
 
-        rm->SetUserInitialization(new DirectActionInit());
+          rm->SetUserInitialization(new DirectActionInit());
 
-        auto* ui = G4UImanager::GetUIpointer();
-        ui->ApplyCommand("/run/verbose " + std::to_string(cfg_.verbosity));
-        ui->ApplyCommand("/event/verbose 0");
-        ui->ApplyCommand("/tracking/verbose 0");
+          auto* ui = G4UImanager::GetUIpointer();
+          ui->ApplyCommand("/run/verbose " + std::to_string(cfg_.verbosity));
+          ui->ApplyCommand("/event/verbose 0");
+          ui->ApplyCommand("/tracking/verbose 0");
 
-        rm->Initialize();
-        rm->RunInitialization();
+          rm->Initialize();
+          rm->RunInitialization();
 
-        world_pv_ = G4TransportationManager::GetTransportationManager()
-                        ->GetNavigatorForTracking()
-                        ->GetWorldVolume();
-        physics_list_ = physics;
+          world_pv_ = G4TransportationManager::GetTransportationManager()
+                          ->GetNavigatorForTracking()
+                          ->GetWorldVolume();
+          physics_list_ = physics;
+        }
 
         ready_promise.set_value();
 
@@ -195,6 +212,7 @@ class Geant4Sim {
   }
 
   void init_worker() {
+    AEGIR_TRACE_EVENT("g4", "init_worker");
     int id = next_thread_id_.fetch_add(1);
     G4Threading::G4SetThreadId(id);
     G4WorkerThread::BuildGeometryAndPhysicsVector();

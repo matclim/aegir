@@ -7,12 +7,18 @@
 """Benchmark runner for concurrency scaling measurements.
 
 Sweeps over G4 thread counts and phlex parallelism levels, collects
-timing data (wall clock, CPU, per-event queue/processing latencies)
+timing data (wall clock, CPU, per-event spans from the Chrome trace)
 and writes results to CSV.
+
+Per-event percentiles are derived from the Chrome Trace Event JSON
+written by aegir when built with -DAEGIR_ENABLE_TRACE=ON. If the trace
+file is absent (build without tracing, or the run crashed before
+flushing), the per-event columns are left blank.
 """
 
 import argparse
 import csv
+import json
 import os
 import re
 import shutil
@@ -20,21 +26,22 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import time
 
 
 WORKFLOW_JSONNET = {
     "gun_mt": "workflows/gun_mt_bench.jsonnet",
     "pythia8_mt": "workflows/pythia8_mt_bench.jsonnet",
+    "fixed_target_mt": "workflows/fixed_target_mt_bench.jsonnet",
 }
 
 
-def render_jsonnet(workflow, num_events, g4_threads, timing_file, pythia_threads=None):
+def render_jsonnet(workflow, num_events, g4_threads, pythia_threads=None):
     """Render a benchmark Jsonnet config to a temporary JSON file."""
     jsonnet_file = WORKFLOW_JSONNET[workflow]
     ext_vars = {
         "num_events": str(num_events),
-        "g4_threads": str(g4_threads),
-        "timing_file": timing_file,
+        "concurrency": str(g4_threads),
     }
     if workflow == "pythia8_mt":
         ext_vars["pythia_threads"] = str(
@@ -56,11 +63,128 @@ def render_jsonnet(workflow, num_events, g4_threads, timing_file, pythia_threads
     return tmp.name
 
 
-def run_phlex(config_json, parallelism):
+def run_phlex(config_json, parallelism, trace_file=None):
     """Run phlex with the given config and parallelism level."""
     cmd = ["phlex", "-c", config_json, "-j", str(parallelism)]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    env = os.environ.copy()
+    if trace_file:
+        env["AEGIR_TRACE_FILE"] = trace_file
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600, env=env)
     return result
+
+
+def affinity_pool():
+    """Return the sorted list of CPU IDs this process is allowed to use.
+
+    Respects cgroup/taskset limits — preferable to os.cpu_count() in
+    containerised or pinned environments.
+    """
+    return sorted(os.sched_getaffinity(0))
+
+
+def run_phlex_cohort(config_json, parallelism, g4_threads, n_copies, cpu_pool):
+    """Launch n_copies phlex processes in parallel, each pinned to a
+    disjoint g4_threads-wide CPU slice.
+
+    Returns (results, wall_time_s) where results is a list of
+    (returncode, combined_output, trace_file_path) tuples.
+    """
+    procs = []
+    base_env = os.environ.copy()
+    for i in range(n_copies):
+        cpus = cpu_pool[i * g4_threads : (i + 1) * g4_threads]
+        if not cpus:
+            break
+        cpu_list = ",".join(str(c) for c in cpus)
+        out_dir = tempfile.mkdtemp(prefix=f"cohort_p{i}_")
+        trace_file = os.path.join(out_dir, "trace.json")
+        env = dict(base_env)
+        env["AEGIR_TRACE_FILE"] = trace_file
+        cmd = [
+            "taskset",
+            "-c",
+            cpu_list,
+            "phlex",
+            "-c",
+            config_json,
+            "-j",
+            str(parallelism),
+        ]
+        proc = subprocess.Popen(
+            cmd,
+            cwd=out_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        procs.append((proc, out_dir, trace_file))
+
+    start = time.monotonic()
+    results = []
+    for proc, out_dir, trace_file in procs:
+        try:
+            stdout, stderr = proc.communicate(timeout=3600)
+            results.append((proc.returncode, stdout + stderr, trace_file, out_dir))
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            results.append((-1, "", trace_file, out_dir))
+    wall_time_s = time.monotonic() - start
+    return results, wall_time_s
+
+
+def aggregate_cohort(cohort_results):
+    """Average parsed-output metrics and merge trace stats across cohort copies."""
+    parsed = [parse_phlex_output(out) for _, out, _, _ in cohort_results]
+    valid = [p for p in parsed if "real_time_s" in p]
+    if not valid:
+        return {
+            "cpu_time_s": "",
+            "real_time_s": "",
+            "cpu_efficiency_pct": "",
+            "max_rss_mb": "",
+        }
+
+    def mean_or(key):
+        vs = [p.get(key) for p in valid if p.get(key) is not None]
+        return f"{statistics.mean(vs):.3f}" if vs else ""
+
+    return {
+        "cpu_time_s": mean_or("cpu_time_s"),
+        "real_time_s": mean_or("real_time_s"),
+        "cpu_efficiency_pct": mean_or("cpu_efficiency_pct"),
+        "max_rss_mb": mean_or("max_rss_mb"),
+    }
+
+
+def aggregate_cohort_traces(cohort_results):
+    """Concatenate per-event spans from every cohort trace and reduce.
+
+    Returns the same column set as parse_chrome_trace, but with
+    percentiles computed over the union of events from every cohort
+    member.
+    """
+    all_events = []
+    for _, _, trace_file, _ in cohort_results:
+        if not os.path.exists(trace_file):
+            continue
+        try:
+            with open(trace_file) as f:
+                all_events.extend(json.load(f))
+        except (OSError, json.JSONDecodeError):
+            continue
+    if not all_events:
+        return parse_chrome_trace("/nonexistent")
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, prefix="cohort_merged_"
+    )
+    json.dump(all_events, tmp)
+    tmp.close()
+    try:
+        return parse_chrome_trace(tmp.name)
+    finally:
+        os.unlink(tmp.name)
 
 
 def parse_phlex_output(text):
@@ -89,42 +213,72 @@ def parse_phlex_output(text):
     return metrics
 
 
-def parse_timing_csv(timing_file):
-    """Parse per-event timing CSV and compute summary statistics."""
-    stats = {
-        "mean_queue_wait_ms": "",
-        "mean_g4_process_ms": "",
-        "mean_round_trip_ms": "",
-        "median_round_trip_ms": "",
-        "p95_round_trip_ms": "",
+PER_EVENT_SPANS = ("simulate", "ProcessOneEvent", "flush_hits", "build_primaries")
+
+
+def parse_chrome_trace(trace_file):
+    """Aggregate per-event span durations from a Chrome Trace Event JSON.
+
+    Reads complete events (ph='X') in the 'g4' category and returns
+    mean/median/p95 of each span's duration in milliseconds, plus the
+    derived framework overhead per event (simulate - ProcessOneEvent).
+    """
+    blank = {
+        "mean_simulate_ms": "",
+        "p50_simulate_ms": "",
+        "p95_simulate_ms": "",
+        "mean_process_ms": "",
+        "p50_process_ms": "",
+        "p95_process_ms": "",
+        "mean_overhead_ms": "",
     }
-    if not timing_file or not os.path.exists(timing_file):
-        return stats
+    if not trace_file or not os.path.exists(trace_file):
+        return blank
 
-    queue_waits = []
-    g4_procs = []
-    round_trips = []
+    try:
+        with open(trace_file) as f:
+            trace = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"  trace parse failed: {e}", file=sys.stderr)
+        return blank
 
-    with open(timing_file) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            queue_waits.append(float(row["queue_wait_ms"]))
-            g4_procs.append(float(row["g4_process_ms"]))
-            round_trips.append(float(row["round_trip_ms"]))
+    durs_us = {name: [] for name in PER_EVENT_SPANS}
+    for ev in trace:
+        if ev.get("ph") != "X" or ev.get("cat") != "g4":
+            continue
+        name = ev.get("name")
+        if name in durs_us:
+            durs_us[name].append(ev["dur"])
 
-    if not round_trips:
-        return stats
+    if not durs_us["simulate"]:
+        return blank
 
-    sorted_rt = sorted(round_trips)
-    p95_idx = int(len(sorted_rt) * 0.95)
+    def pct(xs, p):
+        if not xs:
+            return None
+        xs = sorted(xs)
+        i = min(int(len(xs) * p), len(xs) - 1)
+        return xs[i]
 
-    stats["mean_queue_wait_ms"] = f"{statistics.mean(queue_waits):.3f}"
-    stats["mean_g4_process_ms"] = f"{statistics.mean(g4_procs):.3f}"
-    stats["mean_round_trip_ms"] = f"{statistics.mean(round_trips):.3f}"
-    stats["median_round_trip_ms"] = f"{statistics.median(round_trips):.3f}"
-    stats["p95_round_trip_ms"] = f"{sorted_rt[min(p95_idx, len(sorted_rt) - 1)]:.3f}"
-
-    return stats
+    out = {}
+    sim_us = durs_us["simulate"]
+    proc_us = durs_us["ProcessOneEvent"]
+    out["mean_simulate_ms"] = f"{statistics.mean(sim_us) / 1e3:.3f}"
+    out["p50_simulate_ms"] = f"{pct(sim_us, 0.50) / 1e3:.3f}"
+    out["p95_simulate_ms"] = f"{pct(sim_us, 0.95) / 1e3:.3f}"
+    if proc_us:
+        out["mean_process_ms"] = f"{statistics.mean(proc_us) / 1e3:.3f}"
+        out["p50_process_ms"] = f"{pct(proc_us, 0.50) / 1e3:.3f}"
+        out["p95_process_ms"] = f"{pct(proc_us, 0.95) / 1e3:.3f}"
+        out["mean_overhead_ms"] = (
+            f"{(statistics.mean(sim_us) - statistics.mean(proc_us)) / 1e3:.3f}"
+        )
+    else:
+        out["mean_process_ms"] = ""
+        out["p50_process_ms"] = ""
+        out["p95_process_ms"] = ""
+        out["mean_overhead_ms"] = ""
+    return out
 
 
 COLUMNS = [
@@ -132,17 +286,21 @@ COLUMNS = [
     "num_events",
     "g4_threads",
     "parallelism",
+    "copies",
     "repeat",
     "return_code",
     "cpu_time_s",
     "real_time_s",
+    "cohort_wall_s",
     "cpu_efficiency_pct",
     "max_rss_mb",
-    "mean_queue_wait_ms",
-    "mean_g4_process_ms",
-    "mean_round_trip_ms",
-    "median_round_trip_ms",
-    "p95_round_trip_ms",
+    "mean_simulate_ms",
+    "p50_simulate_ms",
+    "p95_simulate_ms",
+    "mean_process_ms",
+    "p50_process_ms",
+    "p95_process_ms",
+    "mean_overhead_ms",
 ]
 
 
@@ -151,24 +309,34 @@ def run_sweep(args):
     results = []
     total_runs = len(args.g4_threads) * len(args.parallelism) * args.repeats
     run_num = 0
+    cpu_pool = affinity_pool() if args.saturate else []
+    num_cores = len(cpu_pool)
 
     for g4_t in args.g4_threads:
         for par in args.parallelism:
             for rep in range(1, args.repeats + 1):
                 run_num += 1
-                print(
-                    f"[{run_num}/{total_runs}] "
-                    f"g4_threads={g4_t} parallelism={par} repeat={rep}"
-                )
+                if args.saturate:
+                    n_copies = max(1, num_cores // g4_t)
+                    print(
+                        f"[{run_num}/{total_runs}] "
+                        f"g4_threads={g4_t} parallelism={par} repeat={rep} "
+                        f"copies={n_copies} (saturating {num_cores}-core pool)"
+                    )
+                else:
+                    n_copies = 1
+                    print(
+                        f"[{run_num}/{total_runs}] "
+                        f"g4_threads={g4_t} parallelism={par} repeat={rep}"
+                    )
 
-                timing_file = tempfile.mktemp(suffix=".csv", prefix="timing_")
+                trace_file = tempfile.mktemp(suffix=".json", prefix="trace_")
 
                 try:
                     config_json = render_jsonnet(
                         args.workflow,
                         args.num_events,
                         g4_t,
-                        timing_file,
                         pythia_threads=par if args.workflow == "pythia8_mt" else None,
                     )
                 except subprocess.CalledProcessError as e:
@@ -176,29 +344,65 @@ def run_sweep(args):
                     continue
 
                 try:
-                    result = run_phlex(config_json, par)
-                    combined_output = result.stdout + result.stderr
-                    metrics = parse_phlex_output(combined_output)
-                    timing_stats = parse_timing_csv(timing_file)
+                    if args.saturate:
+                        cohort, wall = run_phlex_cohort(
+                            config_json, par, g4_t, n_copies, cpu_pool
+                        )
+                        metrics = aggregate_cohort(cohort)
+                        trace_stats = aggregate_cohort_traces(cohort)
+                        rc = max((r[0] for r in cohort), default=-1)
+                        row = {
+                            "workflow": args.workflow,
+                            "num_events": args.num_events,
+                            "g4_threads": g4_t,
+                            "parallelism": par,
+                            "copies": n_copies,
+                            "repeat": rep,
+                            "return_code": rc,
+                            "cpu_time_s": metrics.get("cpu_time_s", ""),
+                            "real_time_s": metrics.get("real_time_s", ""),
+                            "cohort_wall_s": f"{wall:.3f}",
+                            "cpu_efficiency_pct": metrics.get("cpu_efficiency_pct", ""),
+                            "max_rss_mb": metrics.get("max_rss_mb", ""),
+                            **trace_stats,
+                        }
+                        results.append(row)
+                        print(
+                            f"  cohort_wall={wall:.2f}s  "
+                            f"per-copy real={metrics.get('real_time_s', '?')}s  rc={rc}"
+                        )
+                        for _, _, tf, od in cohort:
+                            if os.path.exists(tf):
+                                os.unlink(tf)
+                            if os.path.exists(od):
+                                shutil.rmtree(od, ignore_errors=True)
+                    else:
+                        result = run_phlex(config_json, par, trace_file=trace_file)
+                        combined_output = result.stdout + result.stderr
+                        metrics = parse_phlex_output(combined_output)
+                        trace_stats = parse_chrome_trace(trace_file)
 
-                    row = {
-                        "workflow": args.workflow,
-                        "num_events": args.num_events,
-                        "g4_threads": g4_t,
-                        "parallelism": par,
-                        "repeat": rep,
-                        "return_code": result.returncode,
-                        "cpu_time_s": metrics.get("cpu_time_s", ""),
-                        "real_time_s": metrics.get("real_time_s", ""),
-                        "cpu_efficiency_pct": metrics.get("cpu_efficiency_pct", ""),
-                        "max_rss_mb": metrics.get("max_rss_mb", ""),
-                        **timing_stats,
-                    }
-                    results.append(row)
-
-                    rt = metrics.get("real_time_s", "?")
-                    eff = metrics.get("cpu_efficiency_pct", "?")
-                    print(f"  real={rt}s  efficiency={eff}%  rc={result.returncode}")
+                        row = {
+                            "workflow": args.workflow,
+                            "num_events": args.num_events,
+                            "g4_threads": g4_t,
+                            "parallelism": par,
+                            "copies": 1,
+                            "repeat": rep,
+                            "return_code": result.returncode,
+                            "cpu_time_s": metrics.get("cpu_time_s", ""),
+                            "real_time_s": metrics.get("real_time_s", ""),
+                            "cohort_wall_s": "",
+                            "cpu_efficiency_pct": metrics.get("cpu_efficiency_pct", ""),
+                            "max_rss_mb": metrics.get("max_rss_mb", ""),
+                            **trace_stats,
+                        }
+                        results.append(row)
+                        rt = metrics.get("real_time_s", "?")
+                        eff = metrics.get("cpu_efficiency_pct", "?")
+                        print(
+                            f"  real={rt}s  efficiency={eff}%  rc={result.returncode}"
+                        )
 
                 except subprocess.TimeoutExpired:
                     print("  TIMEOUT", file=sys.stderr)
@@ -208,6 +412,7 @@ def run_sweep(args):
                             "num_events": args.num_events,
                             "g4_threads": g4_t,
                             "parallelism": par,
+                            "copies": n_copies,
                             "repeat": rep,
                             "return_code": -1,
                         }
@@ -215,8 +420,8 @@ def run_sweep(args):
                 finally:
                     if os.path.exists(config_json):
                         os.unlink(config_json)
-                    if os.path.exists(timing_file):
-                        os.unlink(timing_file)
+                    if os.path.exists(trace_file):
+                        os.unlink(trace_file)
                     # Clean up any ROOT files from the run
                     for f in os.listdir("."):
                         if f.startswith(("gun_mt_", "pythia8_mt_")) and (
@@ -299,19 +504,19 @@ def plot_results(results, output_prefix):
     axes[0, 1].set_title("CPU efficiency vs parallelism")
     axes[0, 1].legend()
 
-    # 3. Mean queue wait vs g4_threads
+    # 3. Mean framework overhead per event vs g4_threads
     for par in par_levels:
         xs, ys = [], []
         for g4_t in g4_levels:
-            v = avg(grouped.get((g4_t, par), []), "mean_queue_wait_ms")
+            v = avg(grouped.get((g4_t, par), []), "mean_overhead_ms")
             if v is not None:
                 xs.append(g4_t)
                 ys.append(v)
         if xs:
             axes[1, 0].plot(xs, ys, "o-", label=f"parallelism={par}")
     axes[1, 0].set_xlabel("G4 threads")
-    axes[1, 0].set_ylabel("Mean queue wait (ms)")
-    axes[1, 0].set_title("Queue wait vs G4 threads")
+    axes[1, 0].set_ylabel("Mean framework overhead per event (ms)")
+    axes[1, 0].set_title("simulate − ProcessOneEvent vs G4 threads")
     axes[1, 0].legend()
 
     # 4. Speedup relative to baseline
@@ -387,6 +592,15 @@ def main():
         action="store_true",
         help="Generate scaling plots (requires matplotlib)",
     )
+    parser.add_argument(
+        "--saturate",
+        action="store_true",
+        help=(
+            "For each thread count T, run floor(num_cores / T) parallel "
+            "phlex processes pinned to disjoint CPU slices, so the machine "
+            "is fully loaded for every row. Produces per-cohort metrics."
+        ),
+    )
     args = parser.parse_args()
 
     # Check dependencies
@@ -395,6 +609,9 @@ def main():
         sys.exit(1)
     if not shutil.which("phlex"):
         print("Error: phlex not found in PATH", file=sys.stderr)
+        sys.exit(1)
+    if args.saturate and not shutil.which("taskset"):
+        print("Error: --saturate requires taskset in PATH", file=sys.stderr)
         sys.exit(1)
 
     results = run_sweep(args)

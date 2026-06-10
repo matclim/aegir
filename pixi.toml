@@ -49,6 +49,7 @@ clean = "rm -rf build"
 [feature.bench.dependencies]
 hyperfine = "*"
 just = "*"
+linux-perf = "*"
 
 [environments]
 default = { solve-group = "default" }
