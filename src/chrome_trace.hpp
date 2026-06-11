@@ -18,12 +18,15 @@
 
 #ifdef AEGIR_ENABLE_TRACE
 
+#include <sys/syscall.h>
+#include <unistd.h>
+
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
-#include <thread>
+#include <string>
 
 namespace aegir::trace {
 
@@ -64,10 +67,13 @@ inline long long now_us() {
       .count();
 }
 
+// Kernel thread ID (matches what perf/ps/top show) fits in 32 bits, so the
+// JSON parser in ui.perfetto.dev sees distinct values —
+// std::hash<std::thread::id> produces ~10^18 numbers that JavaScript's float64
+// collapses into one track.
 inline long long thread_id() {
-  static thread_local long long id = static_cast<long long>(
-      std::hash<std::thread::id>{}(std::this_thread::get_id()) &
-      0x7fffffffffffffffLL);
+  static thread_local long long id =
+      static_cast<long long>(syscall(SYS_gettid));
   return id;
 }
 
@@ -92,6 +98,17 @@ inline void write_counter(char const* cat, char const* name, long long value) {
                "\"ts\":%lld,\"pid\":1,\"tid\":%lld,\"args\":{\"value\":%lld}}",
                first_event().exchange(false) ? "" : ",\n", name, cat, now_us(),
                thread_id(), value);
+}
+
+inline void set_thread_name(std::string const& name) {
+  auto* f = file_handle();
+  if (!f) return;
+  std::lock_guard lock(write_mutex());
+  std::fprintf(f,
+               "%s{\"name\":\"thread_name\",\"ph\":\"M\","
+               "\"pid\":1,\"tid\":%lld,\"args\":{\"name\":\"%s\"}}",
+               first_event().exchange(false) ? "" : ",\n", thread_id(),
+               name.c_str());
 }
 
 class ScopedEvent {
@@ -119,10 +136,12 @@ class ScopedEvent {
   }
 #define AEGIR_TRACE_COUNTER(cat, name, value) \
   ::aegir::trace::write_counter(cat, name, static_cast<long long>(value))
+#define AEGIR_TRACE_THREAD_NAME(name) ::aegir::trace::set_thread_name(name)
 
 #else  // !AEGIR_ENABLE_TRACE
 
 #define AEGIR_TRACE_EVENT(cat, name) ((void)0)
 #define AEGIR_TRACE_COUNTER(cat, name, value) ((void)0)
+#define AEGIR_TRACE_THREAD_NAME(name) ((void)0)
 
 #endif

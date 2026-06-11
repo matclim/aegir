@@ -167,6 +167,7 @@ class Geant4Sim {
 
     master_thread_ = std::thread([this, &ready_promise] {
       try {
+        AEGIR_TRACE_THREAD_NAME("g4_master");
         {
           AEGIR_TRACE_EVENT("g4", "init_master");
           auto* rm = new G4MTRunManager();
@@ -214,6 +215,7 @@ class Geant4Sim {
   void init_worker() {
     AEGIR_TRACE_EVENT("g4", "init_worker");
     int id = next_thread_id_.fetch_add(1);
+    AEGIR_TRACE_THREAD_NAME("g4_worker_" + std::to_string(id));
     G4Threading::G4SetThreadId(id);
     G4WorkerThread::BuildGeometryAndPhysicsVector();
 
