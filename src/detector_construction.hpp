@@ -18,6 +18,7 @@
 #include <G4String.hh>
 #include <G4VUserDetectorConstruction.hh>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -81,15 +82,24 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
 
     // Install per-magnet G4FieldManagers on every logical volume whose name
     // contains the configured pattern. Outside these volumes Geant4 never
-    // invokes the field, so drift regions stay cost-free.
+    // invokes the field, so drift regions stay cost-free. An unmatched
+    // pattern is treated as a hard configuration error (wrong field setup is
+    // a silent physics bug otherwise).
     for (auto const& fr : field_source_->regions()) {
       auto* adapter = new ship::G4MagFieldAdapter(fr.field);
       auto* fmgr = new G4FieldManager(adapter);
+      bool matched = false;
       for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
         if (G4StrUtil::contains(lv->GetName(),
-                                std::string_view{fr.volume_pattern}))
+                                std::string_view{fr.volume_pattern})) {
           lv->SetFieldManager(fmgr, /*forceToAllDaughters=*/true);
+          matched = true;
+        }
       }
+      if (!matched)
+        throw std::runtime_error("Field region '" + fr.name +
+                                 "': volume_pattern '" + fr.volume_pattern +
+                                 "' matches no logical volumes");
     }
 
     // Create G4Regions with custom production cuts (once only)

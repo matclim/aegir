@@ -6,7 +6,6 @@
     },
   },
   sources: {
-    field: { cpp: 'field_null_provider' },
     gun: {
       cpp: 'particle_gun_source',
       pdg: 13,
