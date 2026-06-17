@@ -376,6 +376,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-g4-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-tools-6.27.0-h04b3393_8.conda
@@ -741,6 +745,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-g4-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-tools-6.27.0-h04b3393_8.conda
@@ -6038,6 +6046,63 @@ packages:
   run_exports: {}
   size: 24190
   timestamp: 1779159948016
+- conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
+  sha256: a52d84e98840eed6b9773a7400abce77ac472b698f2f5acaf4b93041321053d6
+  md5: 5e79de26869aed1eec815fd3955fb763
+  depends:
+  - field-service-core ==0.1.0.dev0 hb0f4dca_0
+  - field-service-g4 ==0.1.0.dev0 hbeae973_0
+  - field-service-tools ==0.1.0.dev0 hbeae973_0
+  license: LGPL-3.0-or-later
+  run_exports: {}
+  size: 6369
+  timestamp: 1781706445944
+- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
+  sha256: faa714c49f8f916430eb310ea134fc8def3b50b18bfd465166151d8648449347
+  md5: 0f1be050a5870e0fa9fb16ea6c3ccf1c
+  depends:
+  - mp-units
+  - libstdcxx >=15
+  - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
+  - mp-units >=2.5.0,<2.6.0a0
+  license: LGPL-3.0-or-later
+  run_exports:
+    weak:
+    - field-service-core >=0.1.0.dev0,<0.2.0a0
+  size: 71369
+  timestamp: 1781706445944
+- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
+  sha256: 52e85a850b0bd16b1a2eb73e2b1b36398cbfc1dc6161db08f332cb7ecf69b883
+  md5: 0abd376e7c9dc6772891096406f72f9f
+  depends:
+  - field-service-core ==0.1.0.dev0 hb0f4dca_0
+  - geant4
+  - libstdcxx >=15
+  - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
+  - geant4 >=11.4.1,<11.4.2.0a0
+  - mp-units >=2.5.0,<2.6.0a0
+  license: LGPL-3.0-or-later
+  run_exports:
+    weak:
+    - field-service-g4 >=0.1.0.dev0,<0.2.0a0
+  size: 54297
+  timestamp: 1781706445944
+- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
+  sha256: 49bece884eeb745ceeb9a3c2f55bce7269cd4ec8500d1eb3d043d374b417c078
+  md5: 19f146e7d1057abcfcdce889a8ba0859
+  depends:
+  - field-service-core ==0.1.0.dev0 hb0f4dca_0
+  - libstdcxx >=15
+  - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
+  - root_cxx_standard ==20
+  - root_base >=6.40.2,<6.40.3.0a0
+  license: LGPL-3.0-or-later
+  run_exports: {}
+  size: 68643
+  timestamp: 1781706445944
 - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
   sha256: 1a3ee1286f890a2c039abd2bba6a1a346cacbda7f7f075aedff17096e8432aa0
   md5: 952995a6ae59e5347f8fae18c888ecb1

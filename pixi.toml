@@ -9,9 +9,7 @@ platforms = ["linux-64"]
 shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = "*"
-# shipfieldservice is consumed via find_package(SHiPFieldService) — re-enable
-# this dep once the conda package is published on prefix.dev/ship.
-# shipfieldservice = "*"
+field-service = "*"
 phlex = "*"
 root = ">=6.36"
 geant4 = ">=11.3"
