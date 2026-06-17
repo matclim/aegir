@@ -1,8 +1,9 @@
+local n_events = std.parseInt(std.extVar('events'));
 {
   driver: {
     cpp: 'generate_layers',
     layers: {
-      event: { total: 10 },
+      event: { total: n_events },
     },
   },
   sources: {
