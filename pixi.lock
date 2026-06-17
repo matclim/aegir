@@ -190,8 +190,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qt6-main-6.11.1-pl5321h16c4a6b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/readline-8.3-h853b02a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h62bc289_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx20_h3a6f482_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h9db8401_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx23_heb21d79_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-2026.5.1-py314h1bee95f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scitokens-cpp-1.4.0-h096d96b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/siscone-3.1.2-h9e02651_3.conda
@@ -351,7 +351,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3987-syntax-1.1.0-pyhe01879c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-20-20.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-23-23.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-2.1.0-pyha191276_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-82.0.1-pyh332efcf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.17.0-pyhe01879c_1.conda
@@ -375,17 +375,17 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h76de79a_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-h0566472_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-h52839a3_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-h52839a3_1.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-g4-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-tools-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/phlex-0.2.0-hb0f4dca_6.conda
-      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_3.conda
+      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.1.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-26.06.0-hb0f4dca_6.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
@@ -558,8 +558,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qt6-main-6.11.1-pl5321h16c4a6b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/readline-8.3-h853b02a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h62bc289_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx20_h3a6f482_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h9db8401_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx23_heb21d79_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-2026.5.1-py314h1bee95f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scitokens-cpp-1.4.0-h096d96b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/siscone-3.1.2-h9e02651_3.conda
@@ -719,7 +719,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3987-syntax-1.1.0-pyhe01879c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-20-20.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-23-23.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-2.1.0-pyha191276_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-82.0.1-pyh332efcf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.17.0-pyhe01879c_1.conda
@@ -743,17 +743,17 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h76de79a_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-h0566472_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-h52839a3_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-h52839a3_1.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-g4-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/geomodel-tools-6.27.0-h04b3393_8.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/phlex-0.2.0-hb0f4dca_6.conda
-      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_3.conda
+      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.1.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-26.06.0-hb0f4dca_6.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
@@ -3607,28 +3607,28 @@ packages:
     - rhash >=1.4.6,<2.0a0
   size: 193775
   timestamp: 1748644872902
-- conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h62bc289_0.conda
-  sha256: aa3544fbc690b8bfcc60315cfe348d22bacb7855d4f33dc6ab7e105b4fc88f7f
-  md5: c47f1838c7fa865cbd3b8035d7a3c480
+- conda: https://conda.anaconda.org/conda-forge/linux-64/root-6.40.02-py314h9db8401_0.conda
+  sha256: 5cac8b257cd11bef6ef68403c9ddbb6dc52d6eb04ab27a635134d6fe389722d1
+  md5: 0ae0393e1187a1b640136f501251d20b
   depends:
-  - root_base ==6.40.2 cxx20_h3a6f482_0
-  - root_cxx_standard ==20
+  - root_base ==6.40.2 cxx23_heb21d79_0
+  - root_cxx_standard ==23
   - python
   - metakernel
   - ipython
   - notebook
   - numba
-  - python_abi 3.14.* *_cp314
   - root_base >=6.40.2,<6.40.3.0a0
+  - python_abi 3.14.* *_cp314
   license: LGPL-2.1-only
   run_exports: {}
-  size: 43226
-  timestamp: 1781433755466
-- conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx20_h3a6f482_0.conda
-  sha256: 1098c012a20dd291f6f6eb17b9243d6404dc124999332801d2db60b699097a8e
-  md5: 849137b838318778b24c6324b190deff
+  size: 43255
+  timestamp: 1781433745133
+- conda: https://conda.anaconda.org/conda-forge/linux-64/root_base-6.40.02-cxx23_heb21d79_0.conda
+  sha256: 3ae73ac479d41a66f454aa4aea1254b4458e59393aac90423a9e8db30cc6d562
+  md5: c00ef6cbece58b5ad48739a84a0f1edd
   depends:
-  - root_cxx_standard ==20
+  - root_cxx_standard ==23
   - python
   - numpy
   - libgcc-devel_linux-64 *
@@ -3645,70 +3645,72 @@ packages:
   - xorg-libxpm
   - xorg-libxft
   - libglu
-  - libstdcxx >=15
   - libgcc >=15
   - __glibc >=2.17,<3.0.a0
+  - libstdcxx >=15
   - llvm-openmp >=20.1.8
   - _openmp_mutex >=4.5
   - _openmp_mutex * *_llvm
-  - libgl >=1.7.0,<2.0a0
-  - gtest >=1.17.0,<1.17.1.0a0
-  - libsqlite >=3.53.2,<4.0a0
-  - vector-classes >=1.4.5,<1.4.6.0a0
-  - libglu >=9.0.3,<9.1.0a0
-  - tbb >=2023.0.0
-  - xorg-libxau >=1.0.12,<2.0a0
-  - xorg-libx11 >=1.8.13,<2.0a0
-  - xorg-libxft >=2.3.9,<3.0a0
+  - graphviz >=14.1.2,<15.0a0
   - xorg-libxext >=1.3.7,<2.0a0
-  - xorg-libxcursor >=1.2.3,<2.0a0
-  - zeromq >=4.3.5,<4.3.6.0a0
-  - zeromq * drafts_*
-  - ftgl >=2.4.0,<2.4.1.0a0
-  - libcblas >=3.9.0,<4.0a0
-  - libllvm20 >=20.1.8,<20.2.0a0
-  - giflib >=5.2.2,<5.3.0a0
-  - gl2ps >=1.4.2,<1.4.3.0a0
+  - openssl >=3.5.7,<4.0a0
+  - xorg-libxau >=1.0.12,<2.0a0
+  - libpng >=1.6.58,<1.7.0a0
+  - libgl >=1.7.0,<2.0a0
   - libblas >=3.9.0,<4.0a0
-  - davix >=0.8.10,<0.9.0a0
+  - libsqlite >=3.53.2,<4.0a0
+  - libcblas >=3.9.0,<4.0a0
+  - libtiff >=4.7.1,<4.8.0a0
   - libfreetype >=2.14.3
   - libfreetype6 >=2.14.3
-  - lz4-c >=1.10.0,<1.11.0a0
-  - graphviz >=14.1.2,<15.0a0
+  - xorg-libxfixes >=6.0.2,<7.0a0
+  - libglib >=2.88.1,<3.0a0
   - liblzma >=5.8.3,<6.0a0
-  - libtiff >=4.7.1,<4.8.0a0
-  - pythia8 >=8.312,<8.400.0a0
-  - gdk-pixbuf >=2.44.6,<3.0a0
+  - gl2ps >=1.4.2,<1.4.3.0a0
+  - zeromq >=4.3.5,<4.3.6.0a0
+  - zeromq * drafts_*
+  - libllvm20 >=20.1.8,<20.2.0a0
+  - pcre >=8.45,<9.0a0
   - libxml2
   - libxml2-16 >=2.14.6
-  - libglib >=2.88.1,<3.0a0
-  - vdt >=0.4.4,<0.4.5.0a0
-  - librsvg >=2.62.3,<3.0a0
-  - fftw >=3.3.11,<4.0a0
-  - libpng >=1.6.58,<1.7.0a0
-  - xorg-libxfixes >=6.0.2,<7.0a0
-  - numpy >=1.23,<3
-  - zstd >=1.5.7,<1.6.0a0
-  - cfitsio >=4.6.4,<4.6.5.0a0
-  - glew >=2.3.0,<2.4.0a0
-  - xrootd >=5.9.2,<6.0a0
-  - libzlib >=1.3.2,<2.0a0
-  - gsl >=2.7,<2.8.0a0
-  - pcre >=8.45,<9.0a0
-  - python_abi 3.14.* *_cp314
-  - openssl >=3.5.7,<4.0a0
+  - gdk-pixbuf >=2.44.6,<3.0a0
+  - gtest >=1.17.0,<1.17.1.0a0
   - xorg-libxpm >=3.5.19,<4.0a0
+  - xorg-libx11 >=1.8.13,<2.0a0
+  - pythia8 >=8.312,<8.400.0a0
+  - librsvg >=2.62.3,<3.0a0
+  - xorg-libxft >=2.3.9,<3.0a0
+  - numpy >=1.23,<3
+  - xorg-libxcursor >=1.2.3,<2.0a0
+  - tbb >=2023.0.0
+  - glew >=2.3.0,<2.4.0a0
+  - davix >=0.8.10,<0.9.0a0
+  - fftw >=3.3.11,<4.0a0
+  - libzlib >=1.3.2,<2.0a0
+  - giflib >=5.2.2,<5.3.0a0
+  - gsl >=2.7,<2.8.0a0
+  - zstd >=1.5.7,<1.6.0a0
+  - xrootd >=5.9.2,<6.0a0
+  - cfitsio >=4.6.4,<4.6.5.0a0
+  - vector-classes >=1.4.5,<1.4.6.0a0
+  - libglu >=9.0.3,<9.1.0a0
+  - vdt >=0.4.4,<0.4.5.0a0
+  - python_abi 3.14.* *_cp314
+  - lz4-c >=1.10.0,<1.11.0a0
+  - ftgl >=2.4.0,<2.4.1.0a0
   constrains:
   - numba >=0.52
   - cling ==9999
   - root5 ==9999
   - afterimage ==9999
+  track_features:
+  - root_base-p-0
   license: LGPL-2.1-only
   run_exports:
     weak:
     - root_base >=6.40.2,<6.40.3.0a0
-  size: 254808929
-  timestamp: 1781433755466
+  size: 265359237
+  timestamp: 1781433745133
 - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-2026.5.1-py314h1bee95f_0.conda
   sha256: 79d753848377c415578f42285f5f87be711503b887c99e8890fd51d3fae1d6a5
   md5: fb5b4fc759b225d4f32730cc8380ec8e
@@ -5769,16 +5771,16 @@ packages:
   run_exports: {}
   size: 22913
   timestamp: 1752876729969
-- conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-20-20.conda
+- conda: https://conda.anaconda.org/conda-forge/noarch/root_cxx_standard-23-23.conda
   build_number: 0
-  sha256: c34c98c30315633577d6635427ea10931e9cd1ea5a7db1bb380f84a7a46722b8
-  md5: 93120b8f5ad0e2a6bc7680155b88e67c
+  sha256: 582d4bd67e405c7ed802f9048ed2e375e96b53f0426d359e1c3d906257cbf738
+  md5: 38790a241e0bd6b6b09d48e9ff65dbfb
   license: LGPL-2.1-only
   run_exports:
     weak:
-    - root_cxx_standard ==20
-  size: 24200
-  timestamp: 1771356420794
+    - root_cxx_standard ==23
+  size: 24206
+  timestamp: 1771356467911
 - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-2.1.0-pyha191276_1.conda
   sha256: 59656f6b2db07229351dfb3a859c35e57cc8e8bcbc86d4e501bff881a6f771f1
   md5: 28eb91468df04f655a57bcfbb35fc5c5
@@ -6032,63 +6034,63 @@ packages:
   run_exports: {}
   size: 24190
   timestamp: 1779159948016
-- conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h1e2445f_0.conda
-  sha256: a52d84e98840eed6b9773a7400abce77ac472b698f2f5acaf4b93041321053d6
-  md5: 5e79de26869aed1eec815fd3955fb763
+- conda: https://prefix.dev/ship/linux-64/field-service-0.1.0.dev0-h76de79a_1.conda
+  sha256: 2e95e6d4289a1be2ce855d3a8c22bc3142410f207f3facffcc4048427b2101d3
+  md5: 70423949fad1fbaa66e932eee085bcb7
   depends:
-  - field-service-core ==0.1.0.dev0 hb0f4dca_0
-  - field-service-g4 ==0.1.0.dev0 hbeae973_0
-  - field-service-tools ==0.1.0.dev0 hbeae973_0
+  - field-service-core ==0.1.0.dev0 h0566472_1
+  - field-service-g4 ==0.1.0.dev0 h52839a3_1
+  - field-service-tools ==0.1.0.dev0 h52839a3_1
   license: LGPL-3.0-or-later
   run_exports: {}
-  size: 6369
-  timestamp: 1781706445944
-- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-hb0f4dca_0.conda
-  sha256: faa714c49f8f916430eb310ea134fc8def3b50b18bfd465166151d8648449347
-  md5: 0f1be050a5870e0fa9fb16ea6c3ccf1c
+  size: 6529
+  timestamp: 1781790577146
+- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0.dev0-h0566472_1.conda
+  sha256: a835e607b21b0b777c9abc0220e91aeb68f9d3b42094be8cecec049010c08083
+  md5: 051ef06681142b2465632dbd999c2265
   depends:
   - mp-units
+  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
     - field-service-core >=0.1.0.dev0,<0.2.0a0
-  size: 71369
-  timestamp: 1781706445944
-- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-hbeae973_0.conda
-  sha256: 52e85a850b0bd16b1a2eb73e2b1b36398cbfc1dc6161db08f332cb7ecf69b883
-  md5: 0abd376e7c9dc6772891096406f72f9f
+  size: 71569
+  timestamp: 1781790577146
+- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0.dev0-h52839a3_1.conda
+  sha256: b82e2a24572bbb0baf52c4fba37f2bdd55c5fc511545d3667c14d681b937f213
+  md5: 395508a8bf3b7b9aacc873b3d8d63533
   depends:
-  - field-service-core ==0.1.0.dev0 hb0f4dca_0
+  - field-service-core ==0.1.0.dev0 h0566472_1
   - geant4
+  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
   - geant4 >=11.4.1,<11.4.2.0a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
     - field-service-g4 >=0.1.0.dev0,<0.2.0a0
-  size: 54297
-  timestamp: 1781706445944
-- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-hbeae973_0.conda
-  sha256: 49bece884eeb745ceeb9a3c2f55bce7269cd4ec8500d1eb3d043d374b417c078
-  md5: 19f146e7d1057abcfcdce889a8ba0859
+  size: 54601
+  timestamp: 1781790577146
+- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0.dev0-h52839a3_1.conda
+  sha256: 1ae5a8a01e6c5422c6c69db7891f032a91b1506f4be8cdfbfa19d3a144c54be4
+  md5: 5f8abe536a8c494d116cef46d81874e5
   depends:
-  - field-service-core ==0.1.0.dev0 hb0f4dca_0
+  - field-service-core ==0.1.0.dev0 h0566472_1
+  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
-  - root_cxx_standard ==20
   - root_base >=6.40.2,<6.40.3.0a0
+  - root_cxx_standard ==23
   license: LGPL-3.0-or-later
   run_exports: {}
-  size: 68643
-  timestamp: 1781706445944
+  size: 69044
+  timestamp: 1781790577146
 - conda: https://prefix.dev/ship/linux-64/geomodel-core-6.27.0-hb0f4dca_8.conda
   sha256: 1a3ee1286f890a2c039abd2bba6a1a346cacbda7f7f075aedff17096e8432aa0
   md5: 952995a6ae59e5347f8fae18c888ecb1
@@ -6225,21 +6227,17 @@ packages:
   run_exports: {}
   size: 879905
   timestamp: 1781172118044
-- conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_3.conda
-  sha256: d621239a4a230e03a6d3be8b6d638539f0417b18cfe0b876007de224a8b761aa
-  md5: dceb66a660850b6ece023becf7e0efed
+- conda: https://prefix.dev/ship/linux-64/shipdatamodel-26.06.0-hb0f4dca_1.conda
+  sha256: aa3deb3c8098aedad71ba39841095de4de32003ea76fd833415bb6153b8ce3b3
+  md5: 1d21b90f91e4de34d36ff71c62383b9c
   depends:
+  - root
+  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
-  - root_cxx_standard ==20
-  - root_base >=6.40.2,<6.40.3.0a0
-  license: LGPL-3.0-or-later
-  run_exports:
-    weak:
-    - shipdatamodel >=26.6.0,<26.7.0a0
-  size: 48496
-  timestamp: 1781445308736
+  run_exports: {}
+  size: 58503
+  timestamp: 1781105218482
 - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.1.0-hb0f4dca_5.conda
   sha256: 6656a3799ac90b90d95a91467d80d5dbfbec272666ac42786feb7cfb727ea44b
   md5: 0d926358d233cc422a63f0eab60ef9d5
