@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <G4FieldManager.hh>
 #include <G4LogicalVolumeStore.hh>
 #include <G4ProductionCuts.hh>
 #include <G4Region.hh>
@@ -21,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "FieldService/G4MagFieldAdapter.h"
+#include "FieldService/IFieldSource.h"
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
 
@@ -31,6 +34,7 @@ enum class SDMode { scoring, crossing };
 class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
   IGeometrySource const*
       source_;  // non-owning; Job-layer product outlives the G4 run
+  ship::IFieldSource const* field_source_;  // non-owning; may have no regions
   SDMode sd_mode_;
   double ke_threshold_;  // GeV, used by CrossingSD
   std::vector<std::pair<std::string, double>> regions_;  // pattern -> cut in mm
@@ -38,10 +42,11 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
 
  public:
   ConfigurableDetectorConstruction(
-      IGeometrySource const& source, SDMode sd_mode = SDMode::scoring,
-      double ke_threshold = 0.0,
+      IGeometrySource const& source, ship::IFieldSource const& field_source,
+      SDMode sd_mode = SDMode::scoring, double ke_threshold = 0.0,
       std::vector<std::pair<std::string, double>> regions = {})
       : source_{&source},
+        field_source_{&field_source},
         sd_mode_{sd_mode},
         ke_threshold_{ke_threshold},
         regions_{std::move(regions)} {}
@@ -72,6 +77,19 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
 
     for (auto [lv, _] : detector_ids) {
       lv->SetSensitiveDetector(sd);
+    }
+
+    // Install per-magnet G4FieldManagers on every logical volume whose name
+    // contains the configured pattern. Outside these volumes Geant4 never
+    // invokes the field, so drift regions stay cost-free.
+    for (auto const& fr : field_source_->regions()) {
+      auto* adapter = new ship::G4MagFieldAdapter(fr.field);
+      auto* fmgr = new G4FieldManager(adapter);
+      for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
+        if (G4StrUtil::contains(lv->GetName(),
+                                std::string_view{fr.volume_pattern}))
+          lv->SetFieldManager(fmgr, /*forceToAllDaughters=*/true);
+      }
     }
 
     // Create G4Regions with custom production cuts (once only)

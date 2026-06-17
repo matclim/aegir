@@ -6,6 +6,7 @@
     },
   },
   sources: {
+    field: { cpp: 'field_null_provider' },
     geometry: {
       cpp: 'geometry_gdml_provider',
       gdml_file: '../geometry-target-only/ship_target_only.gdml',

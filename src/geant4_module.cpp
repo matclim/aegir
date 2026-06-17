@@ -45,6 +45,7 @@
 #include <utility>
 #include <vector>
 
+#include "FieldService/IFieldSource.h"
 #include "chrome_trace.hpp"
 #include "detector_construction.hpp"
 #include "geant4_sim_core.hpp"
@@ -98,10 +99,12 @@ class Geant4Sim {
   }
 
   SHiP::SimResult simulate(std::shared_ptr<SHiP::IGeometrySource> const& geo,
+                           std::shared_ptr<ship::IFieldSource> const& field,
                            std::vector<SHiP::MCParticle> const& particles) {
     AEGIR_TRACE_EVENT("g4", "simulate");
 
-    std::call_once(init_flag_, [this, &geo]() { init_master(geo); });
+    std::call_once(init_flag_,
+                   [this, &geo, &field]() { init_master(geo, field); });
 
     if (!tl_kernel) init_worker();
 
@@ -158,12 +161,14 @@ class Geant4Sim {
   }
 
  private:
-  void init_master(std::shared_ptr<SHiP::IGeometrySource> const& geo) {
+  void init_master(std::shared_ptr<SHiP::IGeometrySource> const& geo,
+                   std::shared_ptr<ship::IFieldSource> const& field) {
     std::promise<void> ready_promise;
     auto ready_future = ready_promise.get_future();
 
+    field_ = field;  // keep alive for the G4 run
     detector_ = new ConfigurableDetectorConstruction(
-        *geo, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions);
+        *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions);
 
     master_thread_ = std::thread([this, &ready_promise] {
       try {
@@ -243,6 +248,7 @@ class Geant4Sim {
   G4VPhysicalVolume* world_pv_ = nullptr;
   G4VUserPhysicsList* physics_list_ = nullptr;
   ConfigurableDetectorConstruction* detector_ = nullptr;  // owned by G4
+  std::shared_ptr<ship::IFieldSource> field_;             // outlives G4 run
   std::atomic<int> next_thread_id_{0};
   std::atomic<int> next_event_id_{0};
   std::thread master_thread_;
@@ -281,6 +287,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
                concurrency{static_cast<std::size_t>(num_threads)})
       .input_family(
           product_query{.creator = "geometry"_id, .layer = "event"_id},
+          product_query{.creator = "field"_id, .layer = "event"_id},
           product_query{.creator = "mc_particles"_id, .layer = "event"_id})
       .output_product_suffixes("sim_result");
 }

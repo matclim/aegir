@@ -2,15 +2,29 @@
   driver: {
     cpp: 'generate_layers',
     layers: {
-      event: { total: 10 },
+      event: { total: 100 },
     },
   },
   sources: {
-    field: { cpp: 'field_null_provider' },
     geometry: {
       cpp: 'geometry_geomodel_provider',
       db_file: 'ship_geometry.db',
       sensitive_volumes: ['ScoringPlane'],
+    },
+    field: {
+      cpp: 'field_covfie_provider',
+      magnets: [
+        {
+          name: 'MuonShield',
+          volume_pattern: 'MuonShield',
+          cvf_file: 'muon_shield.cvf',
+        },
+        {
+          name: 'Spectrometer',
+          volume_pattern: 'SpectrometerDipole',
+          cvf_file: 'spectrometer_dipole.cvf',
+        },
+      ],
     },
     gun: {
       cpp: 'particle_gun_source',
@@ -30,8 +44,8 @@
     output: {
       cpp: 'sim_output_module',
       mode: 'full',
-      rntuple_file: 'geomodel_output.root',
-      histo_file: 'geomodel_validation.root',
+      rntuple_file: 'gun_st_field_output.root',
+      histo_file: 'gun_st_field_validation.root',
     },
   },
 }

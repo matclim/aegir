@@ -7,6 +7,7 @@ local n_events = std.parseInt(std.extVar('events'));
     },
   },
   sources: {
+    field: { cpp: 'field_null_provider' },
     pythia8: {
       cpp: 'pythia8_source',
       beam_energy: 400.0,

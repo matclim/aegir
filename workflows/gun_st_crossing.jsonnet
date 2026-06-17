@@ -6,6 +6,7 @@
     },
   },
   sources: {
+    field: { cpp: 'field_null_provider' },
     geometry: {
       cpp: 'geometry_geomodel_provider',
       db_file: 'ship_geometry.db',

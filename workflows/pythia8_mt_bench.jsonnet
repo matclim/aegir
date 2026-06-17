@@ -10,6 +10,7 @@ local pythia_threads = std.parseInt(std.extVar('pythia_threads'));
     },
   },
   sources: {
+    field: { cpp: 'field_null_provider' },
     geometry: { cpp: 'geometry_builtin_provider' },
     pythia8: {
       cpp: 'pythia8_source',

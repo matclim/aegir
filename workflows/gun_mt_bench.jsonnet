@@ -8,6 +8,7 @@ local concurrency = std.parseInt(std.extVar('concurrency'));
     },
   },
   sources: {
+    field: { cpp: 'field_null_provider' },
     geometry: { cpp: 'geometry_builtin_provider' },
     gun: {
       cpp: 'particle_gun_source',

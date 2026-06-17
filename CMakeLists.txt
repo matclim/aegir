@@ -13,6 +13,7 @@ option(
 
 # Dependencies
 find_package(SHiPDataModel REQUIRED)
+find_package(SHiPFieldService REQUIRED COMPONENTS G4Adapter)
 
 # Phlex's cmake config does not call find_dependency for its transitive deps
 find_package(Boost REQUIRED COMPONENTS json)
@@ -122,7 +123,13 @@ endif()
 add_library(geant4_module MODULE src/geant4_module.cpp)
 target_link_libraries(
     geant4_module
-    PRIVATE phlex::module SHiP::SHiPDataModel ${Geant4_LIBRARIES} spdlog::spdlog
+    PRIVATE
+        phlex::module
+        SHiP::SHiPDataModel
+        ${Geant4_LIBRARIES}
+        spdlog::spdlog
+        SHiPFieldService::SHiPFieldService
+        SHiPFieldService::G4Adapter
 )
 target_include_directories(
     geant4_module
@@ -131,6 +138,19 @@ target_include_directories(
 if(AEGIR_ENABLE_TRACE)
     target_compile_definitions(geant4_module PRIVATE AEGIR_ENABLE_TRACE)
 endif()
+
+# Field provider plugins
+add_library(field_covfie_provider MODULE src/field_covfie_provider.cpp)
+target_link_libraries(
+    field_covfie_provider
+    PRIVATE phlex::module SHiPFieldService::SHiPFieldService
+)
+
+add_library(field_null_provider MODULE src/field_null_provider.cpp)
+target_link_libraries(
+    field_null_provider
+    PRIVATE phlex::module SHiPFieldService::SHiPFieldService
+)
 
 # Pythia8 source plugin
 add_library(pythia8_source MODULE src/pythia8_source.cpp)
@@ -160,6 +180,8 @@ set(PLUGIN_TARGETS
     fixed_target_source
     geometry_builtin_provider
     geometry_gdml_provider
+    field_covfie_provider
+    field_null_provider
     geant4_module
     sim_output_module
 )

@@ -9,6 +9,7 @@ platforms = ["linux-64"]
 shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = "*"
+shipfieldservice = "*"
 phlex = "*"
 root = ">=6.36"
 geant4 = ">=11.3"
