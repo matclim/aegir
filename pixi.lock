@@ -167,7 +167,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lzo-2.10-h280c20c_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py314h67df5f8_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/ms-gsl-4.2.2-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.6-hdb14827_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nettle-3.10.1-h4a9d5aa_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.13.2-h171cf75_0.conda
@@ -538,7 +537,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvmlite-0.47.0-py314h946fb2a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py314h67df5f8_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/ms-gsl-4.2.2-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.6-hdb14827_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.13.2-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nlohmann_json-3.12.0-h54a6638_1.conda
@@ -3184,18 +3182,6 @@ packages:
   run_exports: {}
   size: 27424
   timestamp: 1772445227915
-- conda: https://conda.anaconda.org/conda-forge/linux-64/ms-gsl-4.2.2-h171cf75_0.conda
-  sha256: 5d7d8f22ac74cb707f9eaacd0dfae80cfd0617474672245f0abce9f1a359bc98
-  md5: 8cebca167f0353876f70ce9ce5d2ef3b
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libstdcxx >=14
-  - libgcc >=14
-  license: MIT
-  license_family: MIT
-  run_exports: {}
-  size: 26945
-  timestamp: 1779374860487
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.6-hdb14827_0.conda
   sha256: fc89f74bbe362fb29fa3c037697a89bec140b346a2469a90f7936d1d7ea4d8a3
   md5: fc21868a1a5aacc937e7a18747acb8a5

@@ -21,9 +21,6 @@ libjsonnet = "*"
 libboost-devel = "*"
 tbb-devel = "*"
 spdlog = "*"
-fmt = "*"
-mp-units = "*"
-ms-gsl = "*"
 
 # Build tools
 cmake = ">=3.27"
