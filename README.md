@@ -36,7 +36,7 @@ do not need to install these manually when using pixi.
 
 - [SHiPDataModel](https://github.com/ShipSoft/data-model) (event data classes)
 - [Phlex](https://github.com/Framework-R-D/phlex) (+ Boost, TBB, spdlog)
-- ROOT 6.36+ (Core, RIO, Hist, MathCore, ROOTNTuple)
+- ROOT 6.40+ (Core, RIO, Hist, MathCore, ROOTNTuple)
 - Geant4 11.3+ (with multi-threading enabled)
 - Pythia8 8.3+
 - Random123
