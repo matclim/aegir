@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(
     aegir
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Phlex-based simulation framework for the SHiP experiment"
     LANGUAGES CXX
 )
