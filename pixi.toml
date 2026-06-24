@@ -23,6 +23,9 @@ libjsonnet = "*"
 libboost-devel = "*"
 tbb-devel = "*"
 spdlog = "*"
+# Required transitively by GeoModelCore's CMake config (find_dependency(Eigen3 ...));
+# declared explicitly because conda-forge geomodel-core does not list it as a runtime dep.
+eigen = "*"
 
 # Build tools
 cmake = ">=3.27"
