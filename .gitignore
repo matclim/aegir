@@ -10,3 +10,5 @@ __pycache__/
 .claude/
 CLAUDE.md
 .pixi/
+doxygen/html/
+doxygen/latex/
