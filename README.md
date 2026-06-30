@@ -2,6 +2,10 @@
 
 Phlex-based simulation framework for the SHiP experiment.
 
+## Documentation
+
+An [automatic class reference](https://shipsoft.github.io/aegir/) is built using Doxygen from comments in the C++ code.
+
 ## Architecture
 
 ```
