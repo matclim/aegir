@@ -21,9 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "phlex/core/product_selector.hpp"
-#include "phlex/model/data_cell_index.hpp"
-#include "phlex/source.hpp"
+#include "mc_particle_source.hpp"
 
 namespace {
 
@@ -91,7 +89,7 @@ void configure_processes(Pythia8::Pythia& pythia) {
   pythia.readString("WeakSingleBoson:all = on");
 }
 
-class FixedTargetSource {
+class FixedTargetSource : public phlex::source {
  public:
   FixedTargetSource(std::string const& xml_dir, double beam_energy,
                     int target_z, int target_a, double target_z_start,
@@ -155,6 +153,16 @@ class FixedTargetSource {
     return extract_particles(pythia.event, z_interaction);
   }
 
+  phlex::detail::provider_bundles create_providers(
+      phlex::product_selector const& selector) override {
+    return aegir::mc_particle_provider_bundles(
+        selector,
+        [this](phlex::data_cell_index const& id) { return generate(id); },
+        phlex::concurrency::serial);
+  }
+
+  phlex::index_generator indices() override { co_return; }
+
  private:
   int target_z_;
   int target_a_;
@@ -167,7 +175,7 @@ class FixedTargetSource {
 
 }  // namespace
 
-PHLEX_REGISTER_PROVIDERS(s, config) {
+PHLEX_REGISTER_SOURCE(s, config) {
   using namespace phlex;
 
   auto xml_dir = config.get<std::string>("xml_dir", [] {
@@ -182,10 +190,7 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   auto interaction_length = config.get<double>("interaction_length", 191.9);
   auto tau0_threshold = config.get<double>("tau0_threshold", 1.0);
 
-  auto src = s.make<FixedTargetSource>(xml_dir, beam_energy, target_z, target_a,
-                                       target_z_start, target_z_end,
-                                       interaction_length, tau0_threshold);
-
-  src.provide("generate", &FixedTargetSource::generate, concurrency::serial)
-      .output_product("mc_particles", "particles", "event");
+  s.add_source<FixedTargetSource>(
+      "fixed_target", xml_dir, beam_energy, target_z, target_a, target_z_start,
+      target_z_end, interaction_length, tau0_threshold);
 }

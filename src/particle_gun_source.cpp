@@ -14,9 +14,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "phlex/core/product_selector.hpp"
-#include "phlex/model/data_cell_index.hpp"
-#include "phlex/source.hpp"
+#include "mc_particle_source.hpp"
 
 namespace {
 
@@ -46,7 +44,7 @@ struct PhiloxRng {
   double uniform(double lo, double hi) { return lo + (hi - lo) * uniform(); }
 };
 
-class ParticleGun {
+class ParticleGun : public phlex::source {
  public:
   ParticleGun(int pdg, double p_min, double p_max, double max_theta,
               std::array<double, 3> vertex)
@@ -78,6 +76,16 @@ class ParticleGun {
     return {mc};
   }
 
+  phlex::detail::provider_bundles create_providers(
+      phlex::product_selector const& selector) override {
+    return aegir::mc_particle_provider_bundles(
+        selector,
+        [this](phlex::data_cell_index const& id) { return generate(id); },
+        phlex::concurrency::unlimited);
+  }
+
+  phlex::index_generator indices() override { co_return; }
+
  private:
   int pdg_;
   double p_min_, p_max_, max_theta_;
@@ -86,7 +94,7 @@ class ParticleGun {
 
 }  // namespace
 
-PHLEX_REGISTER_PROVIDERS(s, config) {
+PHLEX_REGISTER_SOURCE(s, config) {
   using namespace phlex;
 
   auto pdg = config.get<int>("pdg", 13);           // muon
@@ -97,9 +105,6 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   auto vy = config.get<double>("vertex_y", 0.0);
   auto vz = config.get<double>("vertex_z", -500.0);  // mm, upstream of target
 
-  auto gun = s.make<ParticleGun>(pdg, p_min, p_max, max_theta,
-                                 std::array<double, 3>{vx, vy, vz});
-
-  gun.provide("generate", &ParticleGun::generate, concurrency::unlimited)
-      .output_product("mc_particles", "particles", "event");
+  s.add_source<ParticleGun>("particle_gun", pdg, p_min, p_max, max_theta,
+                            std::array<double, 3>{vx, vy, vz});
 }

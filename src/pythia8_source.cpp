@@ -24,9 +24,7 @@
 #include <thread>
 #include <vector>
 
-#include "phlex/core/product_selector.hpp"
-#include "phlex/model/data_cell_index.hpp"
-#include "phlex/source.hpp"
+#include "mc_particle_source.hpp"
 
 namespace {
 
@@ -55,7 +53,7 @@ std::vector<SHiP::MCParticle> extract_particles(Pythia8::Event const& event) {
 // Single-threaded Pythia8 source
 // ============================================================================
 
-class Pythia8Source {
+class Pythia8Source : public phlex::source {
  public:
   Pythia8Source(std::string const& xml_dir, double beam_energy,
                 std::string const& process) {
@@ -76,6 +74,16 @@ class Pythia8Source {
     return extract_particles(pythia_->event);
   }
 
+  phlex::detail::provider_bundles create_providers(
+      phlex::product_selector const& selector) override {
+    return aegir::mc_particle_provider_bundles(
+        selector,
+        [this](phlex::data_cell_index const& id) { return generate(id); },
+        phlex::concurrency::serial);
+  }
+
+  phlex::index_generator indices() override { co_return; }
+
  private:
   std::unique_ptr<Pythia8::Pythia> pythia_;
 };
@@ -84,7 +92,7 @@ class Pythia8Source {
 // Multi-threaded Pythia8 source (PythiaParallel on dedicated thread)
 // ============================================================================
 
-class Pythia8MTSource {
+class Pythia8MTSource : public phlex::source {
  public:
   Pythia8MTSource(std::string const& xml_dir, double beam_energy,
                   std::string const& process, int num_threads, long num_events,
@@ -149,6 +157,16 @@ class Pythia8MTSource {
     return pop();
   }
 
+  phlex::detail::provider_bundles create_providers(
+      phlex::product_selector const& selector) override {
+    return aegir::mc_particle_provider_bundles(
+        selector,
+        [this](phlex::data_cell_index const& id) { return generate(id); },
+        phlex::concurrency::serial);
+  }
+
+  phlex::index_generator indices() override { co_return; }
+
  private:
   void push(std::vector<SHiP::MCParticle> particles) {
     std::unique_lock lock{mutex_};
@@ -186,7 +204,7 @@ class Pythia8MTSource {
 
 }  // namespace
 
-PHLEX_REGISTER_PROVIDERS(s, config) {
+PHLEX_REGISTER_SOURCE(s, config) {
   using namespace phlex;
 
   auto xml_dir = config.get<std::string>("xml_dir", [] {
@@ -199,9 +217,7 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   auto parallel = config.get<bool>("parallel", false);
 
   if (!parallel) {
-    auto src = s.make<Pythia8Source>(xml_dir, beam_energy, process);
-    src.provide("generate", &Pythia8Source::generate, concurrency::serial)
-        .output_product("mc_particles", "particles", "event");
+    s.add_source<Pythia8Source>("pythia8", xml_dir, beam_energy, process);
   } else {
     auto num_threads = config.get<int>("num_threads", 4);
     auto num_events = config.get<long>("num_events", 100);
@@ -210,10 +226,8 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
       throw std::runtime_error("queue_size must be >= 1, got " +
                                std::to_string(queue_size));
 
-    auto src = s.make<Pythia8MTSource>(xml_dir, beam_energy, process,
-                                       num_threads, num_events,
-                                       static_cast<std::size_t>(queue_size));
-    src.provide("generate", &Pythia8MTSource::generate, concurrency::serial)
-        .output_product("mc_particles", "particles", "event");
+    s.add_source<Pythia8MTSource>("pythia8", xml_dir, beam_energy, process,
+                                  num_threads, num_events,
+                                  static_cast<std::size_t>(queue_size));
   }
 }
