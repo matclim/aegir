@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "phlex/core/product_query.hpp"
+#include "phlex/core/product_selector.hpp"
 #include "phlex/model/data_cell_index.hpp"
 #include "phlex/source.hpp"
 
@@ -187,6 +187,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
                                        interaction_length, tau0_threshold);
 
   src.provide("generate", &FixedTargetSource::generate, concurrency::serial)
-      .output_product(
-          product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+      .output_product("mc_particles", "particles", "event");
 }

@@ -18,7 +18,6 @@
 
 #include "GeometryService/SHiPGeometryService.h"
 #include "geometry_source.hpp"
-#include "phlex/core/product_query.hpp"
 #include "phlex/source.hpp"
 
 namespace {
@@ -88,6 +87,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
        [source](data_cell_index const&)
            -> std::shared_ptr<SHiP::IGeometrySource> { return source; },
        concurrency::unlimited)
-      .output_product(
-          product_query{.creator = "geometry"_id, .layer = "event"_id});
+      .output_product("geometry", "detector", "event");
 }

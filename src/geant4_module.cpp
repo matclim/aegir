@@ -50,7 +50,7 @@
 #include "detector_construction.hpp"
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
-#include "phlex/core/product_query.hpp"
+#include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
 namespace {
@@ -286,8 +286,8 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
   g4.transform("simulate", &Geant4Sim::simulate,
                concurrency{static_cast<std::size_t>(num_threads)})
       .input_family(
-          product_query{.creator = "geometry"_id, .layer = "event"_id},
-          product_query{.creator = "field"_id, .layer = "event"_id},
-          product_query{.creator = "mc_particles"_id, .layer = "event"_id})
+          product_selector{.creator = "geometry"_id, .layer = "event"_id},
+          product_selector{.creator = "field"_id, .layer = "event"_id},
+          product_selector{.creator = "mc_particles"_id, .layer = "event"_id})
       .output_product_suffixes("sim_result");
 }

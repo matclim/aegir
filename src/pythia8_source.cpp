@@ -24,7 +24,7 @@
 #include <thread>
 #include <vector>
 
-#include "phlex/core/product_query.hpp"
+#include "phlex/core/product_selector.hpp"
 #include "phlex/model/data_cell_index.hpp"
 #include "phlex/source.hpp"
 
@@ -201,8 +201,7 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   if (!parallel) {
     auto src = s.make<Pythia8Source>(xml_dir, beam_energy, process);
     src.provide("generate", &Pythia8Source::generate, concurrency::serial)
-        .output_product(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+        .output_product("mc_particles", "particles", "event");
   } else {
     auto num_threads = config.get<int>("num_threads", 4);
     auto num_events = config.get<long>("num_events", 100);
@@ -215,7 +214,6 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
                                        num_threads, num_events,
                                        static_cast<std::size_t>(queue_size));
     src.provide("generate", &Pythia8MTSource::generate, concurrency::serial)
-        .output_product(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+        .output_product("mc_particles", "particles", "event");
   }
 }

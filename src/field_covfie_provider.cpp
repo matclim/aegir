@@ -13,7 +13,6 @@
 
 #include "FieldService/CovfieFieldSource.h"
 #include "FieldService/IFieldSource.h"
-#include "phlex/core/product_query.hpp"
 #include "phlex/source.hpp"
 
 PHLEX_REGISTER_PROVIDERS(s, config) {
@@ -37,6 +36,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
          return source;
        },
        concurrency::unlimited)
-      .output_product(
-          product_query{.creator = "field"_id, .layer = "event"_id});
+      .output_product("field", "map", "event");
 }

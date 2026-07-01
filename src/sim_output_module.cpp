@@ -31,7 +31,7 @@
 #include <vector>
 
 #include "TH1D.h"
-#include "phlex/core/product_query.hpp"
+#include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
 namespace {
@@ -336,29 +336,29 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
   if (mode == "noop") {
     auto noop = m.make<MCNoop>();
     noop.observe("noop", &MCNoop::observe, concurrency::unlimited)
-        .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+        .input_family(product_selector{.creator = "mc_particles"_id,
+                                       .layer = "event"_id});
   } else if (mode == "noop_full") {
     auto noop = m.make<SimNoop>();
     noop.observe("noop", &SimNoop::observe, concurrency::unlimited)
         .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id},
-            product_query{.creator = "geant4"_id,
-                          .layer = "event"_id,
-                          .suffix = "sim_result"_id});
+            product_selector{.creator = "mc_particles"_id, .layer = "event"_id},
+            product_selector{.creator = "geant4"_id,
+                             .layer = "event"_id,
+                             .suffix = "sim_result"_id});
   } else if (mode == "mc_only") {
     auto writer = m.make<MCRNTupleWriter>(rntuple_file);
     writer
         .observe("write_rntuple", &MCRNTupleWriter::write,
                  concurrency::unlimited)
-        .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+        .input_family(product_selector{.creator = "mc_particles"_id,
+                                       .layer = "event"_id});
 
     auto histogrammer = m.make<MCHistogrammer>(histo_file);
     histogrammer
         .observe("validate", &MCHistogrammer::observe, concurrency::unlimited)
-        .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+        .input_family(product_selector{.creator = "mc_particles"_id,
+                                       .layer = "event"_id});
   } else {
     auto filter_empty = config.get<bool>("filter_empty", false);
 
@@ -367,18 +367,18 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
         .observe("write_rntuple", &SimRNTupleWriter::write,
                  concurrency::unlimited)
         .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id},
-            product_query{.creator = "geant4"_id,
-                          .layer = "event"_id,
-                          .suffix = "sim_result"_id});
+            product_selector{.creator = "mc_particles"_id, .layer = "event"_id},
+            product_selector{.creator = "geant4"_id,
+                             .layer = "event"_id,
+                             .suffix = "sim_result"_id});
 
     auto histogrammer = m.make<SimHistogrammer>(histo_file);
     histogrammer
         .observe("validate", &SimHistogrammer::observe, concurrency::unlimited)
         .input_family(
-            product_query{.creator = "mc_particles"_id, .layer = "event"_id},
-            product_query{.creator = "geant4"_id,
-                          .layer = "event"_id,
-                          .suffix = "sim_result"_id});
+            product_selector{.creator = "mc_particles"_id, .layer = "event"_id},
+            product_selector{.creator = "geant4"_id,
+                             .layer = "event"_id,
+                             .suffix = "sim_result"_id});
   }
 }

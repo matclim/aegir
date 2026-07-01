@@ -10,7 +10,7 @@ shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = "*"
 field-service = "*"
-phlex = "*"
+phlex = ">=0.3.0"
 root = ">=6.40"
 # aegir/phlex are C++23 — pull the matching ROOT build variant.
 root_cxx_standard = "==23"

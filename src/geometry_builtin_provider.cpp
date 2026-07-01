@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "geometry_source.hpp"
-#include "phlex/core/product_query.hpp"
 #include "phlex/source.hpp"
 
 namespace {
@@ -81,6 +80,5 @@ PHLEX_REGISTER_PROVIDERS(s) {
        concurrency::unlimited)
       // TODO: move to job layer once phlex supports declaring it without
       // self-referential parent (currently segfaults in layer_generator).
-      .output_product(
-          product_query{.creator = "geometry"_id, .layer = "event"_id});
+      .output_product("geometry", "detector", "event");
 }

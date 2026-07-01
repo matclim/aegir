@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "phlex/core/product_query.hpp"
+#include "phlex/core/product_selector.hpp"
 #include "phlex/model/data_cell_index.hpp"
 #include "phlex/source.hpp"
 
@@ -101,6 +101,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
                                  std::array<double, 3>{vx, vy, vz});
 
   gun.provide("generate", &ParticleGun::generate, concurrency::unlimited)
-      .output_product(
-          product_query{.creator = "mc_particles"_id, .layer = "event"_id});
+      .output_product("mc_particles", "particles", "event");
 }
