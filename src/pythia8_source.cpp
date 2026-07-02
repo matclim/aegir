@@ -10,11 +10,11 @@
 
 #include <Pythia8/Pythia.h>
 #include <Pythia8/PythiaParallel.h>
-#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <condition_variable>
 #include <cstdlib>
+#include <exception>
 #include <future>
 #include <mutex>
 #include <optional>
@@ -103,10 +103,18 @@ class Pythia8MTSource : public phlex::source {
           push(std::move(particles));
         });
       } catch (...) {
-        // Only set exception if the promise has not yet been fulfilled
-        // (i.e. failure during initialisation, before set_value).
+        auto ex = std::current_exception();
+        {
+          std::lock_guard lock{mutex_};
+          worker_exception_ = ex;
+        }
+        // If init failed (before set_value) this reports it to the
+        // constructor via ready_future_.get(); if run() failed (after
+        // set_value) the promise is already satisfied and set_exception throws
+        // future_error, which we ignore — pop() surfaces the stored exception
+        // instead of exhaustion.
         try {
-          ready_promise_.set_exception(std::current_exception());
+          ready_promise_.set_exception(ex);
         } catch (std::future_error const&) {
         }
       }
@@ -153,9 +161,16 @@ class Pythia8MTSource : public phlex::source {
     std::unique_lock lock{mutex_};
     cv_pop_.wait(lock, [this] { return !queue_.empty() || done_; });
     if (queue_.empty()) {
-      spdlog::warn(
-          "Pythia8MTSource: generation exhausted, returning empty event");
-      return {};
+      // A failure inside the worker (init or pythia.run) is reported here so it
+      // is not misattributed to exhaustion.
+      if (worker_exception_) std::rethrow_exception(worker_exception_);
+      // Exhaustion is a hard error rather than a silently-empty event: it means
+      // the driver requested more events than the source's num_events. Failing
+      // loudly stops empty entries being written to the output.
+      throw std::runtime_error(
+          "Pythia8MTSource: generation exhausted — the workflow requested more "
+          "events than the source's configured num_events. Increase num_events "
+          "or reduce the driver's event count.");
     }
     auto result = std::move(queue_.front());
     queue_.pop();
@@ -169,6 +184,9 @@ class Pythia8MTSource : public phlex::source {
   std::condition_variable cv_pop_;
   std::queue<std::vector<SHiP::MCParticle>> queue_;
   bool done_ = false;
+  // Set by the worker thread if init or generation throws; rethrown by pop() so
+  // a real failure is not masked as generation exhaustion. Guarded by mutex_.
+  std::exception_ptr worker_exception_;
   // std::jthread: joins on destruction, so a throw from ready_future_.get()
   // in the constructor unwinds cleanly instead of terminating the process.
   std::jthread pythia_thread_;

@@ -138,7 +138,7 @@ aegir_add_plugin(field_null_provider LIBS SHiPFieldService::SHiPFieldService)
 
 aegir_add_plugin(
     pythia8_source
-    LIBS SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
+    LIBS SHiP::SHiPDataModel Pythia8::Pythia8
 )
 
 aegir_add_plugin(
@@ -172,4 +172,11 @@ enable_testing()
 add_test(
     NAME determinism
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/determinism.sh
+)
+
+# Exhaustion: the parallel Pythia8 source must throw, not emit empty events,
+# when the driver requests more events than its configured num_events.
+add_test(
+    NAME pythia_exhaustion
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pythia_exhaustion.sh
 )
