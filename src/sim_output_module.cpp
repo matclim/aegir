@@ -128,7 +128,9 @@ class MCHistogrammer {
       : filename_{std::move(filename)},
         h_multiplicity_{make_hist(200, -0.5, 199.5)},
         h_momentum_{make_hist(200, 0., 500.)},
-        h_pdg_{make_hist(1000, -500.5, 499.5)},
+        // Range reaches ±2212 so protons/neutrons and hyperons land in real
+        // bins rather than overflow; nuclei (10-digit codes) still overflow.
+        h_pdg_{make_hist(5000, -2500.5, 2499.5)},
         f_multiplicity_{h_multiplicity_},
         f_momentum_{h_momentum_},
         f_pdg_{h_pdg_} {}
