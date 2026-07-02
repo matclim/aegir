@@ -7,42 +7,15 @@
 // Provides MCParticle vectors from a configurable particle gun.
 // Each event generates a single particle with fixed or randomised kinematics.
 
-#include <Random123/philox.h>
-
 #include <SHiP/MCParticle.hpp>
 #include <cmath>
 #include <cstdint>
 #include <vector>
 
 #include "mc_particle_source.hpp"
+#include "philox_rng.hpp"
 
 namespace {
-
-// Counter-based RNG: deterministic per event, no shared state.
-struct PhiloxRng {
-  r123::Philox4x32 rng;
-  r123::Philox4x32::ctr_type ctr;
-  r123::Philox4x32::key_type key;
-  int idx = 4;
-
-  explicit PhiloxRng(std::uint32_t seed) {
-    key = {{seed, 0xBEEFCAFE}};
-    ctr = {{0, 0, 0, 0}};
-  }
-
-  double uniform() {
-    if (idx >= 4) {
-      auto result = rng(ctr, key);
-      for (int i = 0; i < 4; ++i) ctr[i] = result[i];
-      ctr[0]++;
-      idx = 0;
-    }
-    // Convert to [0, 1)
-    return ctr[idx++] * (1.0 / 4294967296.0);
-  }
-
-  double uniform(double lo, double hi) { return lo + (hi - lo) * uniform(); }
-};
 
 class ParticleGun : public phlex::source {
  public:
@@ -56,7 +29,7 @@ class ParticleGun : public phlex::source {
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
     auto event_number = static_cast<std::uint32_t>(id.number());
-    PhiloxRng rng{event_number};
+    aegir::PhiloxRng rng{event_number};
 
     double p = rng.uniform(p_min_, p_max_);
     double theta = rng.uniform(0.0, max_theta_);

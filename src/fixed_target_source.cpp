@@ -11,7 +11,6 @@
 // - Multiple physics processes matching FairShip defaults
 
 #include <Pythia8/Pythia.h>
-#include <Random123/philox.h>
 #include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
@@ -22,6 +21,7 @@
 #include <vector>
 
 #include "mc_particle_source.hpp"
+#include "philox_rng.hpp"
 
 namespace {
 
@@ -46,29 +46,6 @@ std::vector<SHiP::MCParticle> extract_particles(Pythia8::Event const& event,
   }
   return particles;
 }
-
-// Counter-based RNG: deterministic per event, no shared state.
-struct PhiloxRng {
-  r123::Philox4x32 rng;
-  r123::Philox4x32::ctr_type ctr;
-  r123::Philox4x32::key_type key;
-  int idx = 4;
-
-  explicit PhiloxRng(std::uint32_t seed) {
-    key = {{seed, 0xF14ED0A7}};
-    ctr = {{0, 0, 0, 0}};
-  }
-
-  double uniform() {
-    if (idx >= 4) {
-      auto result = rng(ctr, key);
-      for (int i = 0; i < 4; ++i) ctr[i] = result[i];
-      ctr[0]++;
-      idx = 0;
-    }
-    return ctr[idx++] * (1.0 / 4294967296.0);
-  }
-};
 
 // Make long-lived particles stable so G4 handles their decay
 void stabilise_long_lived(Pythia8::Pythia& pythia, double tau0_threshold) {
@@ -129,7 +106,8 @@ class FixedTargetSource : public phlex::source {
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
     auto event_number = static_cast<std::uint32_t>(id.number());
-    PhiloxRng rng{event_number};
+    // 0xF14ED0A7: independent stream from the particle gun (0xBEEFCAFE default).
+    aegir::PhiloxRng rng{event_number, 0xF14ED0A7};
 
     // Select target: proton with probability Z/A, else neutron
     double z_over_a =
