@@ -10,6 +10,7 @@
 #include <SHiP/MCParticle.hpp>
 #include <cmath>
 #include <cstdint>
+#include <numbers>
 #include <vector>
 
 #include "mc_particle_source.hpp"
@@ -33,7 +34,7 @@ class ParticleGun : public phlex::source {
 
     double p = rng.uniform(p_min_, p_max_);
     double theta = rng.uniform(0.0, max_theta_);
-    double phi = rng.uniform(0.0, 2.0 * M_PI);
+    double phi = rng.uniform(0.0, 2.0 * std::numbers::pi);
 
     SHiP::MCParticle mc;
     mc.pdgCode = pdg_;

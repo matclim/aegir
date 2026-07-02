@@ -162,3 +162,14 @@ get_property(PLUGIN_TARGETS GLOBAL PROPERTY AEGIR_PLUGIN_TARGETS)
 install(TARGETS ${PLUGIN_TARGETS} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(TARGETS pythia8_benchmark RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY workflows/ DESTINATION share/aegir/workflows)
+
+# Tests
+enable_testing()
+
+# Determinism: same seed -> identical generator output. Runs the gun workflow
+# twice and compares validation histograms. Relies on PHLEX_PLUGIN_PATH being
+# set (activate.sh does this under `pixi run`).
+add_test(
+    NAME determinism
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/determinism.sh
+)

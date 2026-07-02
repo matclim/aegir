@@ -5,6 +5,13 @@ install/
 bench-*.md
 bench-*.json
 timing_*.csv
+# Profiling / benchmarking artifacts (kept out of the tree)
+perf*.data
+perf*.txt
+*.csv
+trace_*.json
+mutrace-out.txt
+*.png
 __pycache__/
 *.pyc
 .claude/
