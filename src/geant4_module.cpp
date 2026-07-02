@@ -39,6 +39,7 @@
 #include <cmath>
 #include <future>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -112,7 +113,9 @@ class Geant4Sim {
     tl_particles.clear();
     tl_track_map.clear();
 
-    auto* event = new G4Event(next_event_id_.fetch_add(1));
+    // unique_ptr so a throw from ProcessOneEvent below can't leak the event
+    // (and its primary vertices/particles); G4 does not take ownership.
+    auto event = std::make_unique<G4Event>(next_event_id_.fetch_add(1));
     {
       AEGIR_TRACE_EVENT("g4", "build_primaries");
       for (auto const& mc : particles) {
@@ -143,11 +146,9 @@ class Geant4Sim {
     state_mgr->SetNewState(G4State_GeomClosed);
     {
       AEGIR_TRACE_EVENT("g4", "ProcessOneEvent");
-      tl_kernel->GetEventManager()->ProcessOneEvent(event);
+      tl_kernel->GetEventManager()->ProcessOneEvent(event.get());
     }
     state_mgr->SetNewState(G4State_GeomClosed);
-
-    delete event;
 
     SHiP::SimResult result;
     {

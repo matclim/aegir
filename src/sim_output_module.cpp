@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include <ROOT/Hist/ConvertToTH1.hxx>
+#include <ROOT/RFieldToken.hxx>
 #include <ROOT/RFile.hxx>
 #include <ROOT/RHist.hxx>
 #include <ROOT/RHistConcurrentFiller.hxx>
@@ -47,6 +48,10 @@ using ROOT::Experimental::RHistFillContext;
 struct FillState {
   std::shared_ptr<ROOT::RNTupleFillContext> ctx;
   std::unique_ptr<REntry> entry;
+  // Field tokens cached once per thread to avoid a per-event name lookup.
+  ROOT::RFieldToken mc_particles;
+  ROOT::RFieldToken sim_hits;
+  ROOT::RFieldToken sim_particles;
 };
 
 using HistD = RHist<double>;
@@ -73,9 +78,13 @@ class MCRNTupleWriter {
     if (!state.ctx) {
       state.ctx = writer_->CreateFillContext();
       state.entry = state.ctx->CreateEntry();
+      state.mc_particles = state.entry->GetToken("mc_particles");
     }
-    *state.entry->GetPtr<std::vector<SHiP::MCParticle>>("mc_particles") =
-        particles;
+    // Bind the input directly for the duration of Fill (which only reads it),
+    // avoiding a full copy of the particle vector every event.
+    state.entry->BindRawPtr(
+        state.mc_particles,
+        const_cast<std::vector<SHiP::MCParticle>*>(&particles));
     state.ctx->Fill(*state.entry);
   }
 
@@ -105,12 +114,20 @@ class SimRNTupleWriter {
     if (!state.ctx) {
       state.ctx = writer_->CreateFillContext();
       state.entry = state.ctx->CreateEntry();
+      state.mc_particles = state.entry->GetToken("mc_particles");
+      state.sim_hits = state.entry->GetToken("sim_hits");
+      state.sim_particles = state.entry->GetToken("sim_particles");
     }
-    *state.entry->GetPtr<std::vector<SHiP::MCParticle>>("mc_particles") =
-        particles;
-    *state.entry->GetPtr<std::vector<SHiP::SimHit>>("sim_hits") = result.hits;
-    *state.entry->GetPtr<std::vector<SHiP::SimParticle>>("sim_particles") =
-        result.particles;
+    // Bind inputs directly for the duration of Fill (read-only), avoiding a
+    // full copy of each vector every event.
+    state.entry->BindRawPtr(
+        state.mc_particles,
+        const_cast<std::vector<SHiP::MCParticle>*>(&particles));
+    state.entry->BindRawPtr(
+        state.sim_hits, const_cast<std::vector<SHiP::SimHit>*>(&result.hits));
+    state.entry->BindRawPtr(
+        state.sim_particles,
+        const_cast<std::vector<SHiP::SimParticle>*>(&result.particles));
     state.ctx->Fill(*state.entry);
   }
 
