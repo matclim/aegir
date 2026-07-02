@@ -38,7 +38,43 @@ Both standalone and Phlex include Pythia8 init (~1.3 s). The Phlex-specific
 startup is ~0.2 s (graph construction + plugin loading). Per-event framework
 overhead is 0.05–0.07 ms, compared to ~0.12 ms/event for Pythia8 generation.
 
-## Geant4: single-threaded vs multi-threaded
+## Geant4 direct integration (current)
+
+Since the rework of the Geant4 module (direct per-thread worker kernels,
+no event queue), the sections below this one describing "threading
+backends" and the queue/promise pattern are **historical** — those
+backends no longer exist. Current numbers, measured on a different
+machine (i5-1334U: 2 P-cores + 8 E-cores, 12 threads), 2000 events,
+particle gun (muons, 10–100 GeV), FTFP_BERT, noop output:
+
+| Config | glibc malloc | jemalloc |
+|:---|---:|---:|
+| g4=4, `-j 4` | 5.58 ± 0.31 s | 5.00 ± 0.27 s (−10%) |
+| g4=8, `-j 8` | 4.72 ± 0.16 s | 4.25 s median (−11%) |
+| g4=12, `-j 12` | 4.19 ± 0.17 s | 3.57 ± 0.21 s (−15%) |
+
+Findings:
+
+- Throughput keeps improving up to the full hardware thread count on
+  this machine — the earlier "plateau at physical cores" conclusion was
+  an artefact of the queue-based backend.
+- jemalloc (preloaded for phlex via `scripts/shims/phlex`, see
+  `activate.sh`) removes glibc malloc arena contention: 10–15%, growing
+  with concurrency. `AEGIR_NO_JEMALLOC=1` opts out.
+- Voluntary context switches are ~2 per event, independent of thread
+  count — the phlex event-loop driver hands each event index across a
+  dedicated driver thread (two semaphore wake/wait pairs per event).
+- The module's `concurrency` must not exceed phlex `-j`: the framework
+  schedules at most `-j` simulate calls concurrently, so extra worker
+  slots only waste initialisation. The module now defaults its
+  `concurrency` to the framework parallelism and warns when the
+  configured value exceeds it. Running `-j 1` with `concurrency: 4`
+  used to cost 2× in wall time.
+
+Raw data, keyed by git SHA: `results/` (protocol:
+`scripts/bench_baseline.sh`).
+
+## Geant4: single-threaded vs multi-threaded (historical)
 
 Particle gun (muons, 10–100 GeV), FTFP_BERT, noop output, `mt` backend.
 
@@ -53,7 +89,7 @@ At 100 events, ST and MT 4T are within noise (~3.2 s each) — G4 initialisation
 (~2 s) dominates. At 500 events, MT overtakes ST significantly (see thread
 scaling below).
 
-## Geant4 MT thread scaling
+## Geant4 MT thread scaling (historical)
 
 500 events, particle gun (muons, 10–100 GeV), FTFP_BERT, noop output.
 Uses `mt` backend (`G4MTRunManager`).
@@ -69,7 +105,7 @@ Positive scaling up to 4T (= physical core count), then a plateau at 8T.
 No deadlocks at any thread count. See [per-event timing
 analysis](#per-event-timing-analysis) for why scaling plateaus.
 
-## Geant4 threading backend comparison
+## Geant4 threading backend comparison (historical)
 
 500 events, 4 threads, particle gun, FTFP_BERT, noop output.
 
@@ -90,7 +126,7 @@ counts.
 `mt` is the default — it is the most battle-tested G4 MT model and avoids
 all TBB arena interactions.
 
-## Per-event timing analysis
+## Per-event timing analysis (historical, queue-based backend)
 
 Per-event timing data from the `mt` backend at 4T, 200 events, particle gun.
 All times in milliseconds.

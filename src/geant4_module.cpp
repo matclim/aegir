@@ -61,6 +61,7 @@
 #include "math_utils.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
+#include "phlex/utilities/max_allowed_parallelism.hpp"
 
 namespace {
 
@@ -342,11 +343,18 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
   auto regions_map = config.get<std::map<std::string, double>>(
       "regions", std::map<std::string, double>{});
 
+  // Default to the framework's TBB parallelism (phlex -j) so G4 workers
+  // match the threads that can actually run them. A configured value above
+  // the framework parallelism starves the graph: the extra worker slots
+  // never run concurrently but G4 still initialises kernels for them.
+  auto const active_parallelism =
+      static_cast<int>(detail::max_allowed_parallelism::active_value());
+
   Geant4SimConfig cfg{
       .physics_list =
           config.get<std::string>("physics_list", std::string{"FTFP_BERT"}),
       .verbosity = config.get<int>("verbosity", 0),
-      .concurrency = config.get<int>("concurrency", 1),
+      .concurrency = config.get<int>("concurrency", int{active_parallelism}),
       .sd_mode = sd_mode_str == "crossing" ? SDMode::crossing : SDMode::scoring,
       .ke_threshold = ke_threshold,
       .energy_cut = config.get<bool>("energy_cut", false),
@@ -356,6 +364,13 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
       .regions = {regions_map.begin(), regions_map.end()},
       .export_gdml = config.get<std::string>("export_gdml", std::string{}),
   };
+
+  if (cfg.concurrency > active_parallelism)
+    spdlog::warn(
+        "geant4 concurrency ({}) exceeds framework parallelism ({}); "
+        "at most {} events run concurrently — raise phlex -j or lower "
+        "the module's concurrency",
+        cfg.concurrency, active_parallelism, active_parallelism);
 
   auto num_threads = cfg.concurrency;
   auto g4 = m.make<Geant4Sim>(std::move(cfg));
