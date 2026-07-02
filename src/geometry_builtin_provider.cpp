@@ -13,6 +13,7 @@
 #include <G4NistManager.hh>
 #include <G4PVPlacement.hh>
 #include <G4SystemOfUnits.hh>
+#include <array>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -20,6 +21,7 @@
 
 #include "geometry_source.hpp"
 #include "phlex/source.hpp"
+#include "provider_helpers.hpp"
 
 namespace {
 
@@ -49,8 +51,8 @@ class BuiltinGeometrySource : public SHiP::IGeometrySource {
       auto* planeBox = new G4Box("ScoringPlane", 2 * m, 2 * m, 0.3 * mm);
       auto* planeLV = new G4LogicalVolume(planeBox, siMat, "ScoringPlane");
 
-      double z_positions[] = {2 * m, 4 * m, 6 * m, 8 * m, 10 * m};
-      for (int i = 0; i < 5; ++i) {
+      std::array<double, 5> z_positions{2 * m, 4 * m, 6 * m, 8 * m, 10 * m};
+      for (int i = 0; i < static_cast<int>(z_positions.size()); ++i) {
         new G4PVPlacement(nullptr, G4ThreeVector(0, 0, z_positions[i]), planeLV,
                           "ScoringPlane", worldLV, false, i);
       }
@@ -73,12 +75,8 @@ PHLEX_REGISTER_PROVIDERS(s) {
   // The provider returns a shared_ptr copy for each data cell.
   auto source = std::make_shared<BuiltinGeometrySource>();
 
-  s.provide(
-       "create_geometry",
-       [source](data_cell_index const&)
-           -> std::shared_ptr<SHiP::IGeometrySource> { return source; },
-       concurrency::unlimited)
-      // TODO: move to job layer once phlex supports declaring it without
-      // self-referential parent (currently segfaults in layer_generator).
-      .output_product("geometry", "detector", "event");
+  // TODO: move to job layer once phlex supports declaring it without
+  // self-referential parent (currently segfaults in layer_generator).
+  aegir::provide_constant(s, "create_geometry", source, "geometry", "detector",
+                          "event");
 }

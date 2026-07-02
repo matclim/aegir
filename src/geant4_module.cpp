@@ -51,6 +51,7 @@
 #include "detector_construction.hpp"
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
+#include "math_utils.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
@@ -125,9 +126,7 @@ class Geant4Sim {
               G4ParticleTable::GetParticleTable()->FindParticle(mc.pdgCode);
         auto* def = it->second;
         if (!def) continue;
-        double pmag = std::sqrt(mc.momentum[0] * mc.momentum[0] +
-                                mc.momentum[1] * mc.momentum[1] +
-                                mc.momentum[2] * mc.momentum[2]);
+        double pmag = aegir::magnitude(mc.momentum);
         if (pmag <= 0) continue;
 
         auto* vertex = new G4PrimaryVertex(mc.vertex[0] * mm, mc.vertex[1] * mm,

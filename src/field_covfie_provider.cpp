@@ -14,6 +14,7 @@
 #include "FieldService/CovfieFieldSource.h"
 #include "FieldService/IFieldSource.h"
 #include "phlex/source.hpp"
+#include "provider_helpers.hpp"
 
 PHLEX_REGISTER_PROVIDERS(s, config) {
   using namespace phlex;
@@ -30,11 +31,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
 
   auto source = std::make_shared<ship::CovfieFieldSource>(std::move(magnets));
 
-  s.provide(
-       "create_field",
-       [source](data_cell_index const&) -> std::shared_ptr<ship::IFieldSource> {
-         return source;
-       },
-       concurrency::unlimited)
-      .output_product("field", "map", "event");
+  aegir::provide_constant(s, "create_field", source, "field", "map", "event");
 }

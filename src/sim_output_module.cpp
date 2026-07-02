@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "TH1D.h"
+#include "math_utils.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
@@ -161,9 +162,7 @@ class MCHistogrammer {
     }
     ctxs.multiplicity->Fill(static_cast<double>(particles.size()));
     for (auto const& p : particles) {
-      auto const& mom = p.momentum;
-      double pmag =
-          std::sqrt(mom[0] * mom[0] + mom[1] * mom[1] + mom[2] * mom[2]);
+      double pmag = aegir::magnitude(p.momentum);
       ctxs.momentum->Fill(pmag);
       ctxs.pdg->Fill(static_cast<double>(p.pdgCode));
     }
@@ -248,9 +247,7 @@ class SimHistogrammer {
     }
     ctxs.mc_multiplicity->Fill(static_cast<double>(particles.size()));
     for (auto const& p : particles) {
-      auto const& mom = p.momentum;
-      double pmag =
-          std::sqrt(mom[0] * mom[0] + mom[1] * mom[1] + mom[2] * mom[2]);
+      double pmag = aegir::magnitude(p.momentum);
       ctxs.mc_momentum->Fill(pmag);
     }
     ctxs.hit_multiplicity->Fill(static_cast<double>(result.hits.size()));
@@ -258,9 +255,7 @@ class SimHistogrammer {
       ctxs.hit_edep->Fill(hit.energyDeposit);
       ctxs.hit_z->Fill(hit.position[2]);
       ctxs.hit_detector->Fill(static_cast<double>(hit.detectorId));
-      auto const& mom = hit.momentum;
-      ctxs.hit_momentum->Fill(
-          std::sqrt(mom[0] * mom[0] + mom[1] * mom[1] + mom[2] * mom[2]));
+      ctxs.hit_momentum->Fill(aegir::magnitude(hit.momentum));
     }
     ctxs.particle_multiplicity->Fill(
         static_cast<double>(result.particles.size()));

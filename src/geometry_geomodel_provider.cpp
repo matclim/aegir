@@ -19,6 +19,7 @@
 #include "GeometryService/SHiPGeometryService.h"
 #include "geometry_source.hpp"
 #include "phlex/source.hpp"
+#include "provider_helpers.hpp"
 
 namespace {
 
@@ -82,10 +83,6 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   auto source =
       std::make_shared<GeoModelGeometrySource>(db_file, std::move(sv));
 
-  s.provide(
-       "create_geometry",
-       [source](data_cell_index const&)
-           -> std::shared_ptr<SHiP::IGeometrySource> { return source; },
-       concurrency::unlimited)
-      .output_product("geometry", "detector", "event");
+  aegir::provide_constant(s, "create_geometry", source, "geometry", "detector",
+                          "event");
 }
