@@ -98,7 +98,7 @@ class Pythia8MTSource : public phlex::source {
                   std::string const& process, int num_threads, long num_events,
                   std::size_t max_queue_size)
       : max_queue_size_{max_queue_size} {
-    pythia_thread_ = std::thread([=, this] {
+    pythia_thread_ = std::jthread([=, this] {
       // Ensure done_ is always signalled when the thread exits,
       // whether by normal completion or exception.
       struct DoneGuard {
@@ -197,7 +197,9 @@ class Pythia8MTSource : public phlex::source {
   std::condition_variable cv_pop_;
   std::queue<std::vector<SHiP::MCParticle>> queue_;
   bool done_ = false;
-  std::thread pythia_thread_;
+  // std::jthread: joins on destruction, so a throw from ready_future_.get()
+  // in the constructor unwinds cleanly instead of terminating the process.
+  std::jthread pythia_thread_;
   std::promise<void> ready_promise_;
   std::future<void> ready_future_{ready_promise_.get_future()};
 };

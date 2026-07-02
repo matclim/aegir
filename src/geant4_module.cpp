@@ -170,7 +170,7 @@ class Geant4Sim {
     detector_ = new ConfigurableDetectorConstruction(
         *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions);
 
-    master_thread_ = std::thread([this, &ready_promise] {
+    master_thread_ = std::jthread([this, &ready_promise] {
       try {
         AEGIR_TRACE_THREAD_NAME("g4_master");
         {
@@ -251,7 +251,10 @@ class Geant4Sim {
   std::shared_ptr<ship::IFieldSource> field_;             // outlives G4 run
   std::atomic<int> next_thread_id_{0};
   std::atomic<int> next_event_id_{0};
-  std::thread master_thread_;
+  // std::jthread: joins on destruction and on move-assignment, so a failed
+  // init_master (which throws from ready_future.get() without setting
+  // init_flag_) can be safely retried without terminating on reassignment.
+  std::jthread master_thread_;
   std::promise<void> shutdown_promise_;
   std::shared_future<void> shutdown_future_{shutdown_promise_.get_future()};
 };
