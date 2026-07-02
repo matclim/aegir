@@ -51,20 +51,35 @@ set_target_properties(
 
 find_path(Random123_INCLUDE_DIR Random123/philox.h REQUIRED)
 
-# Particle gun source plugin
-add_library(particle_gun_source MODULE src/particle_gun_source.cpp)
-target_link_libraries(
-    particle_gun_source
-    PRIVATE phlex::module SHiP::SHiPDataModel
-)
-target_include_directories(particle_gun_source PRIVATE ${Random123_INCLUDE_DIR})
+find_package(SHiPGeometryService CONFIG QUIET)
 
-# Simulation output module plugin
-add_library(sim_output_module MODULE src/sim_output_module.cpp)
-target_link_libraries(
+# Declare a Phlex plugin built from src/<name>.cpp: create the MODULE library,
+# link phlex::module plus the given LIBS, add any INCLUDES, apply the trace
+# define when TRACE is set, and record the target for install.
+# Note: ${Geant4_LIBRARIES} already expands to the exported Geant4:: imported
+# targets, so callers link those directly through it.
+function(aegir_add_plugin name)
+    cmake_parse_arguments(ARG "TRACE" "" "LIBS;INCLUDES" ${ARGN})
+    add_library(${name} MODULE src/${name}.cpp)
+    target_link_libraries(${name} PRIVATE phlex::module ${ARG_LIBS})
+    if(ARG_INCLUDES)
+        target_include_directories(${name} PRIVATE ${ARG_INCLUDES})
+    endif()
+    if(ARG_TRACE AND AEGIR_ENABLE_TRACE)
+        target_compile_definitions(${name} PRIVATE AEGIR_ENABLE_TRACE)
+    endif()
+    set_property(GLOBAL APPEND PROPERTY AEGIR_PLUGIN_TARGETS ${name})
+endfunction()
+
+aegir_add_plugin(
+    particle_gun_source
+    LIBS SHiP::SHiPDataModel
+    INCLUDES ${Random123_INCLUDE_DIR}
+)
+
+aegir_add_plugin(
     sim_output_module
-    PRIVATE
-        phlex::module
+    LIBS
         SHiP::SHiPDataModel
         ROOT::Hist
         ROOT::RIO
@@ -73,51 +88,31 @@ target_link_libraries(
         spdlog::spdlog
 )
 
-# Builtin geometry provider plugin
-add_library(geometry_builtin_provider MODULE src/geometry_builtin_provider.cpp)
-target_link_libraries(
+aegir_add_plugin(
     geometry_builtin_provider
-    PRIVATE phlex::module SHiP::SHiPDataModel ${Geant4_LIBRARIES}
-)
-target_include_directories(
-    geometry_builtin_provider
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    LIBS SHiP::SHiPDataModel ${Geant4_LIBRARIES}
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# GDML geometry provider plugin
-add_library(geometry_gdml_provider MODULE src/geometry_gdml_provider.cpp)
-target_link_libraries(
+aegir_add_plugin(
     geometry_gdml_provider
-    PRIVATE phlex::module SHiP::SHiPDataModel ${Geant4_LIBRARIES}
-)
-target_include_directories(
-    geometry_gdml_provider
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    LIBS SHiP::SHiPDataModel ${Geant4_LIBRARIES}
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # GeoModel geometry provider plugin (optional)
-find_package(SHiPGeometryService CONFIG QUIET)
 if(SHiPGeometryService_FOUND)
     message(
         STATUS
         "SHiPGeometryService found — building geometry_geomodel_provider"
     )
-    add_library(
+    aegir_add_plugin(
         geometry_geomodel_provider
-        MODULE
-        src/geometry_geomodel_provider.cpp
-    )
-    target_link_libraries(
-        geometry_geomodel_provider
-        PRIVATE
-            phlex::module
+        LIBS
             SHiP::SHiPDataModel
             ${Geant4_LIBRARIES}
             SHiPGeometryService::SHiPGeometryService
-    )
-    target_include_directories(
-        geometry_geomodel_provider
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+        INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 else()
     message(
@@ -126,53 +121,31 @@ else()
     )
 endif()
 
-# Geant4 simulation module plugin
-add_library(geant4_module MODULE src/geant4_module.cpp)
-target_link_libraries(
+aegir_add_plugin(
     geant4_module
-    PRIVATE
-        phlex::module
+    LIBS
         SHiP::SHiPDataModel
         ${Geant4_LIBRARIES}
         spdlog::spdlog
         SHiPFieldService::SHiPFieldService
         SHiPFieldService::G4Adapter
-)
-target_include_directories(
-    geant4_module
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-if(AEGIR_ENABLE_TRACE)
-    target_compile_definitions(geant4_module PRIVATE AEGIR_ENABLE_TRACE)
-endif()
-
-# Field provider plugins
-add_library(field_covfie_provider MODULE src/field_covfie_provider.cpp)
-target_link_libraries(
-    field_covfie_provider
-    PRIVATE phlex::module SHiPFieldService::SHiPFieldService
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+    TRACE
 )
 
-add_library(field_null_provider MODULE src/field_null_provider.cpp)
-target_link_libraries(
-    field_null_provider
-    PRIVATE phlex::module SHiPFieldService::SHiPFieldService
-)
+aegir_add_plugin(field_covfie_provider LIBS SHiPFieldService::SHiPFieldService)
+aegir_add_plugin(field_null_provider LIBS SHiPFieldService::SHiPFieldService)
 
-# Pythia8 source plugin
-add_library(pythia8_source MODULE src/pythia8_source.cpp)
-target_link_libraries(
+aegir_add_plugin(
     pythia8_source
-    PRIVATE phlex::module SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
+    LIBS SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
 )
 
-# Fixed-target source plugin
-add_library(fixed_target_source MODULE src/fixed_target_source.cpp)
-target_link_libraries(
+aegir_add_plugin(
     fixed_target_source
-    PRIVATE phlex::module SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
+    LIBS SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
+    INCLUDES ${Random123_INCLUDE_DIR}
 )
-target_include_directories(fixed_target_source PRIVATE ${Random123_INCLUDE_DIR})
 
 # Standalone Pythia8 benchmark (no Phlex dependency)
 add_executable(pythia8_benchmark benchmarks/pythia8_benchmark.cpp)
@@ -185,21 +158,7 @@ target_include_directories(
 # Install
 include(GNUInstallDirs)
 
-set(PLUGIN_TARGETS
-    particle_gun_source
-    pythia8_source
-    fixed_target_source
-    geometry_builtin_provider
-    geometry_gdml_provider
-    field_covfie_provider
-    field_null_provider
-    geant4_module
-    sim_output_module
-)
-if(SHiPGeometryService_FOUND)
-    list(APPEND PLUGIN_TARGETS geometry_geomodel_provider)
-endif()
-
+get_property(PLUGIN_TARGETS GLOBAL PROPERTY AEGIR_PLUGIN_TARGETS)
 install(TARGETS ${PLUGIN_TARGETS} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(TARGETS pythia8_benchmark RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY workflows/ DESTINATION share/aegir/workflows)
