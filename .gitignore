@@ -1,4 +1,5 @@
 build/
+build-*/
 install/
 .cache/
 *.root
@@ -15,6 +16,8 @@ perf*.txt
 trace_*.json
 mutrace-out.txt
 *.png
+flamegraph_*.svg
+/results/
 __pycache__/
 *.pyc
 .claude/
