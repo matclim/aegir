@@ -22,41 +22,9 @@
 
 #include "mc_particle_source.hpp"
 #include "philox_rng.hpp"
+#include "pythia_common.hpp"
 
 namespace {
-
-// Extract final-state particles from a Pythia event record, offsetting vertex z
-std::vector<SHiP::MCParticle> extract_particles(Pythia8::Event const& event,
-                                                double z_offset) {
-  std::vector<SHiP::MCParticle> particles;
-  particles.reserve(event.size());
-  for (int i = 0; i < event.size(); ++i) {
-    auto const& p = event[i];
-    if (!p.isFinal()) continue;
-
-    SHiP::MCParticle mc;
-    mc.pdgCode = p.id();
-    mc.vertex = {p.xProd(), p.yProd(), p.zProd() + z_offset};  // mm
-    mc.momentum = {p.px(), p.py(), p.pz()};                    // GeV
-    mc.energy = p.e();
-    mc.time = p.tProd() / 299.792458;  // mm/c -> ns
-    mc.motherId = p.mother1();
-    mc.status = p.statusHepMC();
-    particles.push_back(mc);
-  }
-  return particles;
-}
-
-// Make long-lived particles stable so G4 handles their decay
-void stabilise_long_lived(Pythia8::Pythia& pythia, double tau0_threshold) {
-  for (auto it = pythia.particleData.begin(); it != pythia.particleData.end();
-       ++it) {
-    auto& entry = *it->second;
-    if (entry.tau0() > tau0_threshold) {
-      entry.setMayDecay(false);
-    }
-  }
-}
 
 void configure_processes(Pythia8::Pythia& pythia) {
   pythia.readString("SoftQCD:inelastic = on");
@@ -77,30 +45,20 @@ class FixedTargetSource : public phlex::source {
         target_z_start_{target_z_start},
         target_z_end_{target_z_end},
         interaction_length_{interaction_length} {
-    auto beam_e_str = std::to_string(beam_energy);
-
     // Proton target (p-p)
     pythia_pp_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
-    pythia_pp_->readString("Beams:idA = 2212");
-    pythia_pp_->readString("Beams:idB = 2212");
-    pythia_pp_->readString("Beams:frameType = 2");
-    pythia_pp_->readString("Beams:eA = " + beam_e_str);
-    pythia_pp_->readString("Beams:eB = 0.");
+    aegir::configure_beams(*pythia_pp_, 2212, 2212, beam_energy);
     configure_processes(*pythia_pp_);
     pythia_pp_->readString("Print:quiet = on");
-    stabilise_long_lived(*pythia_pp_, tau0_threshold);
+    aegir::stabilise_long_lived(*pythia_pp_, tau0_threshold);
     pythia_pp_->init();
 
     // Neutron target (p-n)
     pythia_pn_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
-    pythia_pn_->readString("Beams:idA = 2212");
-    pythia_pn_->readString("Beams:idB = 2112");
-    pythia_pn_->readString("Beams:frameType = 2");
-    pythia_pn_->readString("Beams:eA = " + beam_e_str);
-    pythia_pn_->readString("Beams:eB = 0.");
+    aegir::configure_beams(*pythia_pn_, 2212, 2112, beam_energy);
     configure_processes(*pythia_pn_);
     pythia_pn_->readString("Print:quiet = on");
-    stabilise_long_lived(*pythia_pn_, tau0_threshold);
+    aegir::stabilise_long_lived(*pythia_pn_, tau0_threshold);
     pythia_pn_->init();
   }
 
@@ -129,7 +87,8 @@ class FixedTargetSource : public phlex::source {
       return {};
     }
 
-    return extract_particles(pythia.event, z_interaction);
+    return aegir::extract_particles<SHiP::MCParticle>(pythia.event,
+                                                      z_interaction);
   }
 
   phlex::detail::provider_bundles create_providers(

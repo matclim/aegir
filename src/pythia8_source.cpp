@@ -25,29 +25,9 @@
 #include <vector>
 
 #include "mc_particle_source.hpp"
+#include "pythia_common.hpp"
 
 namespace {
-
-// Extract final-state particles from a Pythia event record
-std::vector<SHiP::MCParticle> extract_particles(Pythia8::Event const& event) {
-  std::vector<SHiP::MCParticle> particles;
-  particles.reserve(event.size());
-  for (int i = 0; i < event.size(); ++i) {
-    auto const& p = event[i];
-    if (!p.isFinal()) continue;
-
-    SHiP::MCParticle mc;
-    mc.pdgCode = p.id();
-    mc.vertex = {p.xProd(), p.yProd(), p.zProd()};  // mm
-    mc.momentum = {p.px(), p.py(), p.pz()};         // GeV
-    mc.energy = p.e();
-    mc.time = p.tProd() / 299.792458;  // mm/c → ns
-    mc.motherId = p.mother1();
-    mc.status = p.statusHepMC();
-    particles.push_back(mc);
-  }
-  return particles;
-}
 
 // ============================================================================
 // Single-threaded Pythia8 source
@@ -58,11 +38,7 @@ class Pythia8Source : public phlex::source {
   Pythia8Source(std::string const& xml_dir, double beam_energy,
                 std::string const& process) {
     pythia_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
-    pythia_->readString("Beams:idA = 2212");
-    pythia_->readString("Beams:idB = 2212");
-    pythia_->readString("Beams:frameType = 2");
-    pythia_->readString("Beams:eA = " + std::to_string(beam_energy));
-    pythia_->readString("Beams:eB = 0.");
+    aegir::configure_beams(*pythia_, 2212, 2212, beam_energy);
     pythia_->readString(process + " = on");
     pythia_->readString("Print:quiet = on");
     pythia_->init();
@@ -71,7 +47,7 @@ class Pythia8Source : public phlex::source {
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const&) {
     if (!pythia_->next())
       throw std::runtime_error("Pythia8 event generation failed");
-    return extract_particles(pythia_->event);
+    return aegir::extract_particles<SHiP::MCParticle>(pythia_->event);
   }
 
   phlex::detail::provider_bundles create_providers(
@@ -113,11 +89,7 @@ class Pythia8MTSource : public phlex::source {
 
       try {
         Pythia8::PythiaParallel pythia(xml_dir, false);
-        pythia.readString("Beams:idA = 2212");
-        pythia.readString("Beams:idB = 2212");
-        pythia.readString("Beams:frameType = 2");
-        pythia.readString("Beams:eA = " + std::to_string(beam_energy));
-        pythia.readString("Beams:eB = 0.");
+        aegir::configure_beams(pythia, 2212, 2212, beam_energy);
         pythia.readString(process + " = on");
         pythia.readString("Print:quiet = on");
         pythia.readString("Parallelism:numThreads = " +
@@ -127,7 +99,7 @@ class Pythia8MTSource : public phlex::source {
         ready_promise_.set_value();
 
         pythia.run(num_events, [this](Pythia8::Pythia* p) {
-          auto particles = extract_particles(p->event);
+          auto particles = aegir::extract_particles<SHiP::MCParticle>(p->event);
           push(std::move(particles));
         });
       } catch (...) {

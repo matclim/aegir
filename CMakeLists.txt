@@ -177,6 +177,10 @@ target_include_directories(fixed_target_source PRIVATE ${Random123_INCLUDE_DIR})
 # Standalone Pythia8 benchmark (no Phlex dependency)
 add_executable(pythia8_benchmark benchmarks/pythia8_benchmark.cpp)
 target_link_libraries(pythia8_benchmark PRIVATE Pythia8::Pythia8)
+target_include_directories(
+    pythia8_benchmark
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 # Install
 include(GNUInstallDirs)

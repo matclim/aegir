@@ -21,7 +21,11 @@
 #include <string>
 #include <vector>
 
-// Local MCParticle struct matching data_products.hpp layout
+#include "pythia_common.hpp"
+
+// Local MCParticle struct matching data_products.hpp layout, so the benchmark
+// stays free of the SHiP data-model dependency while sharing the extraction
+// logic via aegir::extract_particles<MCParticle>.
 struct MCParticle {
   std::int32_t pdgCode{0};
   std::array<double, 3> vertex{0, 0, 0};
@@ -31,27 +35,6 @@ struct MCParticle {
   std::int32_t motherId{-1};
   std::int32_t status{1};
 };
-
-// Replicate extract_particles() from pythia8_source.cpp
-std::vector<MCParticle> extract_particles(Pythia8::Event const& event) {
-  std::vector<MCParticle> particles;
-  particles.reserve(event.size());
-  for (int i = 0; i < event.size(); ++i) {
-    auto const& p = event[i];
-    if (!p.isFinal()) continue;
-
-    MCParticle mc;
-    mc.pdgCode = p.id();
-    mc.vertex = {p.xProd(), p.yProd(), p.zProd()};
-    mc.momentum = {p.px(), p.py(), p.pz()};
-    mc.energy = p.e();
-    mc.time = p.tProd() / 299.792458;
-    mc.motherId = p.mother1();
-    mc.status = p.statusHepMC();
-    particles.push_back(mc);
-  }
-  return particles;
-}
 
 struct Stats {
   double mean;
@@ -95,11 +78,7 @@ void print_stats(char const* label, Stats const& s) {
 template <typename T>
 void configure_pythia(T& pythia, double beam_energy, std::string const& process,
                       bool fairship) {
-  pythia.readString("Beams:idA = 2212");
-  pythia.readString("Beams:idB = 2212");
-  pythia.readString("Beams:frameType = 2");
-  pythia.readString("Beams:eA = " + std::to_string(beam_energy));
-  pythia.readString("Beams:eB = 0.");
+  aegir::configure_beams(pythia, 2212, 2212, beam_energy);
   pythia.readString("Print:quiet = on");
 
   if (fairship) {
@@ -110,17 +89,6 @@ void configure_pythia(T& pythia, double beam_energy, std::string const& process,
     pythia.readString("WeakSingleBoson:all = on");
   } else {
     pythia.readString(process + " = on");
-  }
-}
-
-template <typename T>
-void stabilise_long_lived(T& pythia) {
-  for (auto it = pythia.particleData.begin(); it != pythia.particleData.end();
-       ++it) {
-    auto& entry = it->second;
-    if (entry && entry->tau0() > 1.0) {  // tau0 in mm/c; 1 mm threshold
-      entry->setMayDecay(false);
-    }
   }
 }
 
@@ -198,7 +166,7 @@ int main(int argc, char* argv[]) {
     Pythia8::Pythia pythia(xml_dir(), false);
     configure_pythia(pythia, cfg.beam_energy, cfg.process, cfg.fairship);
     pythia.init();
-    if (cfg.fairship) stabilise_long_lived(pythia);
+    if (cfg.fairship) aegir::stabilise_long_lived(pythia, 1.0);
 
     // Warmup
     for (int i = 0; i < cfg.warmup; ++i) pythia.next();
@@ -219,12 +187,12 @@ int main(int argc, char* argv[]) {
     Pythia8::Pythia pythia(xml_dir(), false);
     configure_pythia(pythia, cfg.beam_energy, cfg.process, cfg.fairship);
     pythia.init();
-    if (cfg.fairship) stabilise_long_lived(pythia);
+    if (cfg.fairship) aegir::stabilise_long_lived(pythia, 1.0);
 
     // Warmup
     for (int i = 0; i < cfg.warmup; ++i) {
       pythia.next();
-      extract_particles(pythia.event);
+      aegir::extract_particles<MCParticle>(pythia.event);
     }
 
     // Generation + extraction
@@ -233,7 +201,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < cfg.events; ++i) {
       auto t0 = Clock::now();
       pythia.next();
-      auto parts = extract_particles(pythia.event);
+      auto parts = aegir::extract_particles<MCParticle>(pythia.event);
       auto t1 = Clock::now();
       full_times.push_back(elapsed_ms(t0, t1));
     }
@@ -248,12 +216,12 @@ int main(int argc, char* argv[]) {
     pythia.readString("Parallelism:numThreads = " +
                       std::to_string(cfg.threads));
     pythia.init();
-    if (cfg.fairship) stabilise_long_lived(pythia);
+    if (cfg.fairship) aegir::stabilise_long_lived(pythia, 1.0);
 
     // Warmup
     int warmup_count = 0;
     pythia.run(cfg.warmup, [&](Pythia8::Pythia* p) {
-      extract_particles(p->event);
+      aegir::extract_particles<MCParticle>(p->event);
       ++warmup_count;
     });
 
@@ -263,12 +231,12 @@ int main(int argc, char* argv[]) {
     pythia2.readString("Parallelism:numThreads = " +
                        std::to_string(cfg.threads));
     pythia2.init();
-    if (cfg.fairship) stabilise_long_lived(pythia2);
+    if (cfg.fairship) aegir::stabilise_long_lived(pythia2, 1.0);
 
     int event_count = 0;
     auto t0 = Clock::now();
     pythia2.run(cfg.events, [&](Pythia8::Pythia* p) {
-      extract_particles(p->event);
+      aegir::extract_particles<MCParticle>(p->event);
       ++event_count;
     });
     auto t1 = Clock::now();
