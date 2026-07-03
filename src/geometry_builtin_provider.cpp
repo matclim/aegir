@@ -78,8 +78,6 @@ PHLEX_REGISTER_PROVIDERS(s) {
   std::shared_ptr<SHiP::IGeometrySource> source =
       std::make_shared<BuiltinGeometrySource>();
 
-  // TODO: move to job layer once phlex supports declaring it without
-  // self-referential parent (currently segfaults in layer_generator).
   aegir::provide_constant(s, "create_geometry", source, "geometry", "detector",
-                          "event");
+                          "job");
 }

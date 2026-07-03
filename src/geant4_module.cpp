@@ -289,8 +289,8 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
   g4.transform("simulate", &Geant4Sim::simulate,
                concurrency{static_cast<std::size_t>(num_threads)})
       .input_family(
-          product_selector{.creator = "geometry"_id, .layer = "event"_id},
-          product_selector{.creator = "field"_id, .layer = "event"_id},
+          product_selector{.creator = "geometry"_id, .layer = "job"_id},
+          product_selector{.creator = "field"_id, .layer = "job"_id},
           product_selector{.creator = "mc_particles"_id, .layer = "event"_id})
       .output_product_suffixes("sim_result");
 }

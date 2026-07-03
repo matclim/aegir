@@ -34,5 +34,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   std::shared_ptr<ship::IFieldSource> source =
       std::make_shared<ship::CovfieFieldSource>(std::move(magnets));
 
-  aegir::provide_constant(s, "create_field", source, "field", "map", "event");
+  aegir::provide_constant(s, "create_field", source, "field", "map", "job");
 }

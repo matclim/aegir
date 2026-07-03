@@ -61,5 +61,5 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
       std::make_shared<GDMLGeometrySource>(gdml_file, std::move(sv));
 
   aegir::provide_constant(s, "create_geometry", source, "geometry", "detector",
-                          "event");
+                          "job");
 }

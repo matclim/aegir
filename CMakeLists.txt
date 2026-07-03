@@ -21,6 +21,8 @@ find_package(SHiPDataModel REQUIRED)
 find_package(SHiPFieldService REQUIRED COMPONENTS G4Adapter)
 
 # Phlex's cmake config does not call find_dependency for its transitive deps
+# (still true as of phlex 0.3.0: its generated deps block is empty), so declare
+# them explicitly before find_package(phlex).
 find_package(Boost REQUIRED COMPONENTS json)
 find_package(TBB REQUIRED)
 find_package(spdlog REQUIRED)
