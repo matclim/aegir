@@ -9,7 +9,8 @@ platforms = ["linux-64"]
 shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = "*"
-field-service = "*"
+field-service-core = "*"
+field-service-g4 = "*"
 phlex = ">=0.3.0"
 root = ">=6.40"
 # aegir/phlex are C++23 — pull the matching ROOT build variant.

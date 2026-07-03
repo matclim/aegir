@@ -380,10 +380,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0-h83dfeff_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-hc496693_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-hc496693_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-he60beb7_1.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.1.0-h0566472_1.conda
@@ -750,10 +748,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0-h83dfeff_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-hc496693_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-hc496693_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-he60beb7_1.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.1.0-h0566472_1.conda
@@ -1140,10 +1136,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-0.1.0-h83dfeff_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-hc496693_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-hc496693_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_1.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-he60beb7_1.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.1.0-h0566472_1.conda
@@ -7788,63 +7782,38 @@ packages:
   run_exports: {}
   size: 24190
   timestamp: 1779159948016
-- conda: https://prefix.dev/ship/linux-64/field-service-0.1.0-h83dfeff_0.conda
-  sha256: 66a242de07e17dd9f18bbb5b7ae8efe5d70a74878db5665544f1d0fa6fbf1f75
-  md5: 408435c3354529efa5178f3460fcde8e
-  depends:
-  - field-service-core ==0.1.0 h0566472_0
-  - field-service-g4 ==0.1.0 hc496693_0
-  - field-service-tools ==0.1.0 hc496693_0
-  license: LGPL-3.0-or-later
-  run_exports: {}
-  size: 6436
-  timestamp: 1781828486855
-- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_0.conda
-  sha256: 4ef42238ea78f6a087b20c5fa75b84a921dc1b8adc62c6597208dd3e11018b06
-  md5: 651950cc9a4da0a5d67f3949c401b126
+- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0566472_1.conda
+  sha256: 9f5f50b2ef56229f166b8d0dae52ba52cf8d77ba907fae4c85bd02fa680efb71
+  md5: db95332cde134e6d1b5b31cce90db863
   depends:
   - mp-units
-  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
     - field-service-core >=0.1.0,<0.2.0a0
-  size: 71615
-  timestamp: 1781828486855
-- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-hc496693_0.conda
-  sha256: 57a61dda7b9cb6cdc013993e9d24e7223671e54d87ce7c87bb94642388012807
-  md5: 980a21a37200082b4935706126bfd499
+  size: 71899
+  timestamp: 1782460390851
+- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-he60beb7_1.conda
+  sha256: a66268032f6e3743d4f21cdaf97d193040d984419b83248c53612a87863d1fa2
+  md5: dd9cc91e95521dd8a68dc5999d8f8f9f
   depends:
-  - field-service-core ==0.1.0 h0566472_0
+  - field-service-core ==0.1.0 h0566472_1
   - geant4
-  - __glibc >=2.17,<3.0.a0
   - libstdcxx >=15
   - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
   - geant4 >=11.4.2,<11.4.3.0a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
     - field-service-g4 >=0.1.0,<0.2.0a0
-  size: 54670
-  timestamp: 1781828486855
-- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-hc496693_0.conda
-  sha256: 81c068bd61b9a0609b664390be66a7cf6179f4c4e4c86e2fa8f1d02c3419d191
-  md5: 291f4905666a9703dfb8d60c6d136434
-  depends:
-  - field-service-core ==0.1.0 h0566472_0
-  - __glibc >=2.17,<3.0.a0
-  - libstdcxx >=15
-  - libgcc >=15
-  - root_cxx_standard ==23
-  - root_base >=6.40.2,<6.40.3.0a0
-  license: LGPL-3.0-or-later
-  run_exports: {}
-  size: 68953
-  timestamp: 1781828486855
+  size: 54921
+  timestamp: 1782460390851
 - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
   sha256: 1ee21a908866ba38a0585bbc199355b178f875aa354365387424965ee01d9dab
   md5: 91450f10621400e7176bc1fbd31c8d60
