@@ -29,7 +29,10 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
     });
   }
 
-  auto source = std::make_shared<ship::CovfieFieldSource>(std::move(magnets));
+  // Publish as the interface type: consumers request
+  // std::shared_ptr<ship::IFieldSource>.
+  std::shared_ptr<ship::IFieldSource> source =
+      std::make_shared<ship::CovfieFieldSource>(std::move(magnets));
 
   aegir::provide_constant(s, "create_field", source, "field", "map", "event");
 }

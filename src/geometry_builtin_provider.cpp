@@ -73,7 +73,10 @@ PHLEX_REGISTER_PROVIDERS(s) {
 
   // Shared instance: geometry is constant across all events.
   // The provider returns a shared_ptr copy for each data cell.
-  auto source = std::make_shared<BuiltinGeometrySource>();
+  // Publish as the interface type: consumers request
+  // std::shared_ptr<SHiP::IGeometrySource>.
+  std::shared_ptr<SHiP::IGeometrySource> source =
+      std::make_shared<BuiltinGeometrySource>();
 
   // TODO: move to job layer once phlex supports declaring it without
   // self-referential parent (currently segfaults in layer_generator).

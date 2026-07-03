@@ -31,7 +31,10 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   using namespace phlex;
   (void)config;
 
-  auto source = std::make_shared<NullFieldSource>();
+  // Publish as the interface type: consumers request
+  // std::shared_ptr<ship::IFieldSource>.
+  std::shared_ptr<ship::IFieldSource> source =
+      std::make_shared<NullFieldSource>();
 
   aegir::provide_constant(s, "create_field", source, "field", "map", "event");
 }

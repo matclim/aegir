@@ -19,6 +19,10 @@ namespace aegir {
 // Register a provider that returns a single shared instance for every data
 // cell. Templated on the registrar and source type so it serves both the
 // geometry (SHiP::IGeometrySource) and field (ship::IFieldSource) providers.
+//
+// The published product type is std::shared_ptr<Source>, so `source` must be
+// typed as the interface consumers request (not the concrete class returned
+// by make_shared) — otherwise the product lookup fails at runtime.
 template <typename Registrar, typename Source>
 void provide_constant(Registrar& s, char const* algorithm,
                       std::shared_ptr<Source> source, char const* creator,

@@ -55,7 +55,10 @@ PHLEX_REGISTER_PROVIDERS(s, config) {
   auto gdml_file = config.get<std::string>("gdml_file");
   auto sv = config.get<std::vector<std::string>>("sensitive_volumes");
 
-  auto source = std::make_shared<GDMLGeometrySource>(gdml_file, std::move(sv));
+  // Publish as the interface type: consumers request
+  // std::shared_ptr<SHiP::IGeometrySource>.
+  std::shared_ptr<SHiP::IGeometrySource> source =
+      std::make_shared<GDMLGeometrySource>(gdml_file, std::move(sv));
 
   aegir::provide_constant(s, "create_geometry", source, "geometry", "detector",
                           "event");
