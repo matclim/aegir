@@ -1,5 +1,5 @@
 ## Checklist
 
 - [ ] Commit message follows [conventional commits](https://www.conventionalcommits.org/)
-- [ ] Pre-commit checks pass (`pre-commit run --all-files`)
+- [ ] Pre-commit checks pass (`pixi run lint`)
 - [ ] CI checks pass
