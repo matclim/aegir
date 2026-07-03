@@ -106,7 +106,8 @@ class FixedTargetSource : public phlex::source {
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
     auto event_number = static_cast<std::uint32_t>(id.number());
-    // 0xF14ED0A7: independent stream from the particle gun (0xBEEFCAFE default).
+    // 0xF14ED0A7: independent stream from the particle gun (0xBEEFCAFE
+    // default).
     aegir::PhiloxRng rng{event_number, 0xF14ED0A7};
 
     // Select target: proton with probability Z/A, else neutron
