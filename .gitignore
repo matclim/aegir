@@ -4,6 +4,9 @@ install/
 *.root
 bench-*.md
 bench-*.json
+# Physics-metrics CI artifacts
+metrics-*.json
+plots/
 timing_*.csv
 # Profiling / benchmarking artifacts (kept out of the tree)
 perf*.data

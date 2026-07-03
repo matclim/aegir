@@ -390,6 +390,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.1.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
+      - conda: https://prefix.dev/ship/noarch/ship-ci-metrics-0.1.0-pyh4616a5c_0.conda
   default:
     channels:
     - url: https://prefix.dev/ship/
@@ -759,6 +760,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.1.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
+      - conda: https://prefix.dev/ship/noarch/ship-ci-metrics-0.1.0-pyh4616a5c_0.conda
   lint:
     channels:
     - url: https://prefix.dev/ship/
@@ -1148,6 +1150,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.1.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
+      - conda: https://prefix.dev/ship/noarch/ship-ci-metrics-0.1.0-pyh4616a5c_0.conda
       - pypi: https://files.pythonhosted.org/packages/62/c1/c455be45ee4d3a886d2353d8c6af5071536d35fee7adf2c4fdf56713fbf9/gersemi-0.27.7-cp313-cp313-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/66/65/08d3a5039b565231c501b31d1a973d4222e9803c03b2c31a9c08bdec3e30/cpplint-2.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d2/a8/84baf48e05b603480b963f655e73b97230f7296433d3cc8206b742c167fd/ignore_python-0.3.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -7924,6 +7927,17 @@ packages:
   run_exports: {}
   size: 44148
   timestamp: 1781443807524
+- conda: https://prefix.dev/ship/noarch/ship-ci-metrics-0.1.0-pyh4616a5c_0.conda
+  sha256: a47f03ad1b40ed0fce43685ec3dcd3616bc722346dac74ac37e9532c421cc5ce
+  md5: c8eba8490e606a2e2e814ae334f7dc6f
+  depends:
+  - python >=3.11
+  - pyyaml
+  - python
+  license: LGPL-3.0-or-later
+  run_exports: {}
+  size: 22612
+  timestamp: 1783114107455
 - pypi: https://files.pythonhosted.org/packages/62/c1/c455be45ee4d3a886d2353d8c6af5071536d35fee7adf2c4fdf56713fbf9/gersemi-0.27.7-cp313-cp313-manylinux_2_28_x86_64.whl
   name: gersemi
   version: 0.27.7

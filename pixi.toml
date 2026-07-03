@@ -18,6 +18,7 @@ geant4 = ">=11.3"
 pythia8 = ">=8.3"
 random123 = "*"
 libjsonnet = "*"
+ship-ci-metrics = "*"
 
 # C++ libraries
 libboost-devel = "*"
@@ -47,6 +48,11 @@ build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
 install = { cmd = "cmake --install build", depends-on = ["build"] }
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 smoke = { cmd = "scripts/smoke.sh", depends-on = ["build"] }
+# Physics smoke: full Geant4 chain (100 events, deterministic seeding), then
+# extract metrics from the validation histograms (see ci/metrics_config.yaml).
+ci-physics-smoke = { cmd = "bash -c 'phlex -c <(jsonnet workflows/gun_st_nofield_smoke.jsonnet)'", depends-on = ["build"] }
+ci-extract-metrics = "ship-metrics-extract . -o metrics-physics-smoke.json --pretty --config ci/metrics_config.yaml"
+ci-render-plots = "ship-metrics-render gun_st_nofield_smoke_validation.root --output-dir plots/physics-smoke --job physics-smoke --config default"
 clean = "rm -rf build"
 
 [feature.bench.dependencies]

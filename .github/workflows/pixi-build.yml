@@ -12,4 +12,26 @@ jobs:
   build:
     uses: ShipSoft/.github/.github/workflows/pixi-cmake-build.yml@main
     with:
-      tasks: '["configure", "build", "install", "test", "smoke"]'
+      tasks: '["configure", "build", "install", "test", "smoke", "ci-physics-smoke", "ci-extract-metrics"]'
+      artifact-name: metrics-physics-smoke
+      artifact-path: metrics-physics-smoke.json
+  store-metrics:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    permissions:
+      contents: write
+    uses: ShipSoft/.github/.github/workflows/physics-metrics.yml@main
+    with:
+      mode: store
+      reference-branch: main
+  compare-metrics:
+    if: github.event_name == 'pull_request'
+    needs: build
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ShipSoft/.github/.github/workflows/physics-metrics.yml@main
+    with:
+      mode: compare
+      reference-branch: main
+      config: ci/metrics_config.yaml
