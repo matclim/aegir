@@ -156,6 +156,12 @@ aegir_add_plugin(
     INCLUDES ${Random123_INCLUDE_DIR}
 )
 
+aegir_add_plugin(
+    file_source
+    LIBS SHiP::SHiPDataModel ROOT::ROOTNTuple ROOT::RIO spdlog::spdlog
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
 # Standalone Pythia8 benchmark (no Phlex dependency)
 add_executable(pythia8_benchmark benchmarks/pythia8_benchmark.cpp)
 target_link_libraries(pythia8_benchmark PRIVATE Pythia8::Pythia8)
@@ -188,4 +194,11 @@ add_test(
 add_test(
     NAME pythia_exhaustion
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pythia_exhaustion.sh
+)
+
+# file_source round-trip: write an RNTuple, read it back through file_source +
+# Geant4, and check the count helper, read-all, and the skip offset.
+add_test(
+    NAME file_source_roundtrip
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/file_source_roundtrip.sh
 )
