@@ -14,6 +14,7 @@
 
 #include <Pythia8/Pythia.h>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -40,6 +41,21 @@ void stabilise_long_lived(Pythia& pythia, double tau0_threshold) {
     auto& entry = it->second;  // ParticleDataEntryPtr (shared_ptr-like)
     if (entry && entry->tau0() > tau0_threshold) entry->setMayDecay(false);
   }
+}
+
+// Advance the generator to its next event, retrying transient failures.
+// Pythia8::next() can occasionally reject a trial event; persistent failure
+// is a hard error rather than a silently-empty event, so it cannot leak
+// empty entries into the output (same convention as Pythia8MTSource
+// exhaustion).
+template <typename Pythia>
+void next_event(Pythia& pythia, char const* source_name,
+                int max_attempts = 10) {
+  for (int attempt = 0; attempt < max_attempts; ++attempt)
+    if (pythia.next()) return;
+  throw std::runtime_error(std::string(source_name) +
+                           ": Pythia8 event generation failed " +
+                           std::to_string(max_attempts) + " times in a row");
 }
 
 // Extract final-state particles from a Pythia event record into a vector of

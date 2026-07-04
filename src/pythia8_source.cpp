@@ -45,8 +45,7 @@ class Pythia8Source : public phlex::source {
   }
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const&) {
-    if (!pythia_->next())
-      throw std::runtime_error("Pythia8 event generation failed");
+    aegir::next_event(*pythia_, "Pythia8Source");
     return aegir::extract_particles<SHiP::MCParticle>(pythia_->event);
   }
 

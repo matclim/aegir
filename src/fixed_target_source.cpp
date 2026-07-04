@@ -11,7 +11,6 @@
 // - Multiple physics processes matching FairShip defaults
 
 #include <Pythia8/Pythia.h>
-#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <cmath>
@@ -82,10 +81,7 @@ class FixedTargetSource : public phlex::source {
         interaction_length_ * std::log(1.0 - u * (1.0 - exp_ratio));
 
     auto& pythia = proton_target ? *pythia_pp_ : *pythia_pn_;
-    if (!pythia.next()) {
-      spdlog::warn("FixedTargetSource: Pythia8 event generation failed");
-      return {};
-    }
+    aegir::next_event(pythia, "FixedTargetSource");
 
     return aegir::extract_particles<SHiP::MCParticle>(pythia.event,
                                                       z_interaction);

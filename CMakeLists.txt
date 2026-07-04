@@ -152,7 +152,7 @@ aegir_add_plugin(
 
 aegir_add_plugin(
     fixed_target_source
-    LIBS SHiP::SHiPDataModel Pythia8::Pythia8 spdlog::spdlog
+    LIBS SHiP::SHiPDataModel Pythia8::Pythia8
     INCLUDES ${Random123_INCLUDE_DIR}
 )
 
