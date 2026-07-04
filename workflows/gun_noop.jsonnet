@@ -1,25 +1,10 @@
-local n_events = std.parseInt(std.extVar('events'));
+local lib = import 'lib.libsonnet';
 {
-  driver: {
-    cpp: 'generate_layers',
-    layers: {
-      event: { total: n_events },
-    },
-  },
+  driver: lib.driver(std.parseInt(std.extVar('events'))),
   sources: {
-    gun: {
-      cpp: 'particle_gun_source',
-      pdg: 13,
-      p_min: 10.0,
-      p_max: 100.0,
-      max_theta: 0.1,
-      vertex_z: -500.0,
-    },
+    gun: lib.gun,
   },
   modules: {
-    output: {
-      cpp: 'sim_output_module',
-      mode: 'noop',
-    },
+    output: lib.noop_output,
   },
 }

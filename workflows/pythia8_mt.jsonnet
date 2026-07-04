@@ -1,34 +1,17 @@
+local lib = import 'lib.libsonnet';
 {
-  driver: {
-    cpp: 'generate_layers',
-    layers: {
-      event: { total: 100 },
-    },
-  },
+  driver: lib.driver(100),
   sources: {
-    field: { cpp: 'field_null_provider' },
-    geometry: { cpp: 'geometry_builtin_provider' },
-    pythia8: {
-      cpp: 'pythia8_source',
-      beam_energy: 400.0,
-      process: 'SoftQCD:inelastic',
+    field: lib.null_field,
+    geometry: lib.builtin_geometry,
+    pythia8: lib.pythia8 {
       parallel: true,
       num_threads: 4,
       num_events: 100,
     },
   },
   modules: {
-    geant4: {
-      cpp: 'geant4_module',
-      physics_list: 'FTFP_BERT',
-      verbosity: 0,
-      concurrency: 4,
-    },
-    output: {
-      cpp: 'sim_output_module',
-      mode: 'full',
-      rntuple_file: 'pythia8_mt_output.root',
-      histo_file: 'pythia8_mt_validation.root',
-    },
+    geant4: lib.geant4 { concurrency: 4 },
+    output: lib.full_output('pythia8_mt_output.root', 'pythia8_mt_validation.root'),
   },
 }

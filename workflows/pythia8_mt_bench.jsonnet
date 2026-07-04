@@ -1,32 +1,17 @@
+local lib = import 'lib.libsonnet';
 local num_events = std.parseInt(std.extVar('num_events'));
-local concurrency = std.parseInt(std.extVar('concurrency'));
-local pythia_threads = std.parseInt(std.extVar('pythia_threads'));
-
 {
-  driver: {
-    cpp: 'generate_layers',
-    layers: {
-      event: { total: num_events },
-    },
-  },
+  driver: lib.driver(num_events),
   sources: {
-    field: { cpp: 'field_null_provider' },
-    geometry: { cpp: 'geometry_builtin_provider' },
-    pythia8: {
-      cpp: 'pythia8_source',
-      beam_energy: 400.0,
-      process: 'SoftQCD:inelastic',
+    field: lib.null_field,
+    geometry: lib.builtin_geometry,
+    pythia8: lib.pythia8 {
       parallel: true,
-      num_threads: pythia_threads,
+      num_threads: std.parseInt(std.extVar('pythia_threads')),
       num_events: num_events,
     },
   },
   modules: {
-    geant4: {
-      cpp: 'geant4_module',
-      physics_list: 'FTFP_BERT',
-      verbosity: 0,
-      concurrency: concurrency,
-    },
+    geant4: lib.geant4 { concurrency: std.parseInt(std.extVar('concurrency')) },
   },
 }
