@@ -41,7 +41,14 @@ execute_process(
     COMMAND ${PYTHIA8_CONFIG} --prefix
     OUTPUT_VARIABLE PYTHIA8_PREFIX
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
 )
+if(NOT PYTHIA8_PREFIX OR NOT EXISTS "${PYTHIA8_PREFIX}/include")
+    message(
+        FATAL_ERROR
+        "pythia8-config --prefix returned '${PYTHIA8_PREFIX}', which is not a Pythia8 installation"
+    )
+endif()
 add_library(Pythia8::Pythia8 SHARED IMPORTED)
 set_target_properties(
     Pythia8::Pythia8
