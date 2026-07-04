@@ -119,15 +119,32 @@ class Geant4Sim {
     auto event = std::make_unique<G4Event>(next_event_id_.fetch_add(1));
     {
       AEGIR_TRACE_EVENT("g4", "build_primaries");
+      std::size_t unknown_pdg = 0;
+      std::size_t no_momentum = 0;
       for (auto const& mc : particles) {
         auto [it, inserted] = tl_pdg_cache.try_emplace(mc.pdgCode, nullptr);
-        if (inserted)
+        if (inserted) {
           it->second =
               G4ParticleTable::GetParticleTable()->FindParticle(mc.pdgCode);
+          // Warn once per unseen code (per thread): FindParticle also returns
+          // null for nuclear (10-digit) PDG codes, which would need
+          // G4IonTable::GetIon() to resolve.
+          if (!it->second)
+            spdlog::warn(
+                "geant4_module: no G4 particle definition for PDG code {} — "
+                "such particles are skipped",
+                mc.pdgCode);
+        }
         auto* def = it->second;
-        if (!def) continue;
+        if (!def) {
+          ++unknown_pdg;
+          continue;
+        }
         double pmag = aegir::magnitude(mc.momentum);
-        if (pmag <= 0) continue;
+        if (pmag <= 0) {
+          ++no_momentum;
+          continue;
+        }
 
         auto* vertex = new G4PrimaryVertex(mc.vertex[0] * mm, mc.vertex[1] * mm,
                                            mc.vertex[2] * mm, mc.time * ns);
@@ -137,6 +154,13 @@ class Geant4Sim {
         vertex->SetPrimary(particle);
         event->AddPrimaryVertex(vertex);
       }
+      if (unknown_pdg > 0 || no_momentum > 0)
+        spdlog::warn(
+            "geant4_module: event {}: skipped {} of {} primaries ({} unknown "
+            "PDG, {} non-positive momentum) — output mc_particles still "
+            "contains them",
+            event->GetEventID(), unknown_pdg + no_momentum, particles.size(),
+            unknown_pdg, no_momentum);
     }
 
     // G4EventManager expects G4State_GeomClosed; it transitions to
