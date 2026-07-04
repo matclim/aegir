@@ -3,6 +3,10 @@ name = "aegir"
 description = "Phlex-based simulation framework for the SHiP experiment"
 channels = ["https://prefix.dev/ship", "conda-forge"]
 platforms = ["linux-64"]
+# Enables source dependencies for the (opt-in) multi-package dev workflow
+# below; inert for the default environment.
+preview = ["pixi-build"]
+requires-pixi = ">=0.68"
 
 [dependencies]
 # SHiP/HEP packages (prefix.dev/ship + conda-forge)
@@ -93,7 +97,31 @@ sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/pre-commit
 sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/commit-msg"
 '''
 
+# --- Multi-package development (opt-in) -------------------------------------
+# Build SHiP dependencies from sibling checkouts instead of the released conda
+# packages: uncomment this block and the `dev` environment below, then run
+# e.g. `pixi run -e dev build`. Requires the sibling checkouts referenced by
+# the path entries; field-service (and phlex PR builds) come from the local
+# channel ../ship-local-channel, populated with
+# `pixi run build-local-channel` in the field_service checkout (or
+# `pixi run build-phlex-pr <N>` in ship-conda-recipes).
+# Do NOT commit the uncommented block or the pixi.lock changes it causes: the
+# committed lock must stay resolvable without sibling checkouts, and pixi
+# validates every environment even when only the default one is used.
+# To test a colleague's PR without a local checkout, use a git spec instead:
+#   shipdatamodel = { git = "https://github.com/ShipSoft/data-model", branch = "<pr-branch>" }
+# See the Developer Guide (SHiP Documentation site) for the full workflow.
+#
+# [feature.dev]
+# channels = [{ channel = "../ship-local-channel", priority = 10 }]
+#
+# [feature.dev.dependencies]
+# shipdatamodel = { path = "../data-model" }
+# shipgeometry = { path = "../geometry" }
+# shipgeometryservice = { path = "../geometry_service" }
+
 [environments]
 default = { solve-group = "default" }
 bench = { features = ["bench"], solve-group = "default" }
 lint = { features = ["lint"], solve-group = "lint" }
+# dev = { features = ["dev"] }  # multi-package dev, see block above
