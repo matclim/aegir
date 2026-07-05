@@ -8,13 +8,7 @@ local lib = import 'lib.libsonnet';
   driver: lib.driver(100),
   sources: {
     geometry: lib.builtin_geometry,
-    field: lib.covfie_field([
-      {
-        name: 'WorldField',
-        volume_pattern: 'World',
-        cvf_file: 'world_05T_y.cvf',
-      },
-    ]),
+    field: lib.world_field_05T_y,
     gun: lib.pencil_gun { vertex_x: 200.0 },
   },
   modules: {

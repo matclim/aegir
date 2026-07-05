@@ -19,6 +19,15 @@
     magnets: magnets,
   },
 
+  // 0.5 T constant By over the whole World volume — the field-smoke setup.
+  world_field_05T_y:: self.covfie_field([
+    {
+      name: 'WorldField',
+      volume_pattern: 'World',
+      cvf_file: 'world_05T_y.cvf',
+    },
+  ]),
+
   builtin_geometry:: { cpp: 'geometry_builtin_provider' },
 
   geomodel_geometry:: {
