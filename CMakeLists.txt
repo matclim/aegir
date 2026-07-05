@@ -59,6 +59,13 @@ target_link_libraries(
 )
 target_include_directories(particle_gun_source PRIVATE ${Random123_INCLUDE_DIR})
 
+# Taking muons from a file plugin # Matei
+add_library(file_particle_source MODULE src/file_particle_source.cpp)
+target_link_libraries(
+    file_particle_source
+    PRIVATE ROOT::ROOTNTuple ROOT::RIO ROOT::ROOTVecOps spdlog::spdlog
+)
+
 # Simulation output module plugin
 add_library(sim_output_module MODULE src/sim_output_module.cpp)
 target_link_libraries(
