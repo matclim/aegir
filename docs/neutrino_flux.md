@@ -83,6 +83,28 @@ vertex (converted mm → m, ns → s: GENIE uses SI), `Momentum()` from
 The driver can run weighted (hand GENIE the weight) or unweighted
 (accept–reject on `weight` first); the schema supports both.
 
+## Converting existing productions
+
+`scripts/convert_fairship_nu_flux.py` converts FairShip `cbmsim` files to
+this format. It reads the trees leaf-by-leaf, so it needs no FairShip
+libraries — any environment with ROOT ≥ 6.40 works:
+
+```sh
+# one sample -> one flux file (weights from MCTrack.fW)
+convert_fairship_nu_flux.py convert -o mbias_nu.root --pot 1.8e9 \
+    --process mbias pythia8_Geant4_1.0_c*.root
+
+# combine samples with different POT equivalents at a common reference
+convert_fairship_nu_flux.py merge -o flux.root --pot 5e13 \
+    mbias_nu.root charm_nu.root
+```
+
+By default all neutrino tracks are converted; `--selection
+points:vetoPoint` restricts to neutrinos with a scoring-plane crossing,
+matching the 2018 histogram extraction. Charm/beauty/tau-descended
+neutrinos are excluded from min. bias samples (they come from the
+dedicated productions) unless `--keep-charm` is given.
+
 ## Open points for the neutrino group
 
 - Field list: is parent-at-decay enough, or should polarisation
