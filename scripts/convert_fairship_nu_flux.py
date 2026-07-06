@@ -109,6 +109,13 @@ class CbmsimLeaves:
 
     def __init__(self, tree, points_branch=None):
         self.tree = tree
+        # Read only what we use: the hit collections dominate the file
+        # size, and skipping them makes streaming from EOS practical.
+        tree.SetBranchStatus("*", False)
+        tree.SetBranchStatus("MCTrack*", True)
+        tree.SetBranchStatus("MCEventHeader*", True)
+        if points_branch:
+            tree.SetBranchStatus(f"{points_branch}*", True)
         self.leaf = {}
         for key, name in self.LEAVES.items():
             leaf = tree.GetLeaf(name)
