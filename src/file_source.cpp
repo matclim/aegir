@@ -61,6 +61,13 @@ class FileSource : public phlex::source {
   FileSource(std::string const& input_file, std::string const& ntuple,
              std::string const& product, long skip)
       : skip_{skip}, read_sim_{product == "sim_particles"} {
+    // skip_ is cast to the unsigned ROOT::NTupleSize_t in generate(); reject a
+    // negative skip here rather than let it wrap around to a huge offset.
+    if (skip < 0)
+      throw std::runtime_error(
+          "file_source: 'skip' must be non-negative, got " +
+          std::to_string(skip));
+
     if (product != "mc_particles" && product != "sim_particles")
       throw std::runtime_error(
           "file_source: unknown product '" + product +
