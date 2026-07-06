@@ -18,6 +18,7 @@
 
 #include <G4Event.hh>
 #include <G4EventManager.hh>
+#include <G4GDMLParser.hh>
 #include <G4MTRunManager.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
@@ -37,6 +38,7 @@
 #include <SHiP/SimResult.hpp>
 #include <atomic>
 #include <cmath>
+#include <fstream>
 #include <future>
 #include <map>
 #include <memory>
@@ -89,6 +91,9 @@ struct Geant4SimConfig {
   double energy_cut_threshold = 0.0;
   double particle_ke_cut = 0.0;
   std::vector<std::pair<std::string, double>> regions;
+  // When set, write the constructed geometry to this GDML file after
+  // initialisation (e.g. to feed the same geometry to external tools).
+  std::string export_gdml;
 };
 
 class Geant4Sim {
@@ -224,6 +229,19 @@ class Geant4Sim {
                           ->GetNavigatorForTracking()
                           ->GetWorldVolume();
           physics_list_ = physics;
+
+          if (!cfg_.export_gdml.empty()) {
+            // G4GDMLParser::Write aborts via G4Exception on an existing
+            // file; check first to fail with a catchable, clear error.
+            if (std::ifstream{cfg_.export_gdml}.good())
+              throw std::runtime_error(
+                  "geant4_module: export_gdml target '" + cfg_.export_gdml +
+                  "' already exists — remove it or choose another path");
+            G4GDMLParser parser;
+            parser.Write(cfg_.export_gdml, world_pv_);
+            spdlog::info("geant4_module: geometry exported to {}",
+                         cfg_.export_gdml);
+          }
         }
 
         ready_promise.set_value();
@@ -305,6 +323,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
           config.get<double>("energy_cut_threshold", double{ke_threshold}),
       .particle_ke_cut = config.get<double>("particle_ke_cut", 0.0),
       .regions = {regions_map.begin(), regions_map.end()},
+      .export_gdml = config.get<std::string>("export_gdml", std::string{}),
   };
 
   auto num_threads = cfg.concurrency;
