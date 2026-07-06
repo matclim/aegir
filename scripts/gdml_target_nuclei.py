@@ -35,7 +35,13 @@ def collect_nuclei(geo):
     for material in geo.GetListOfMaterials():
         if material.GetDensity() <= 1e-10:  # vacuum
             continue
-        for i in range(max(material.GetNelements(), 1)):
+        if material.GetNelements() == 0 or not material.GetElement(0):
+            # Simple material defined directly by Z/A, no element table.
+            z = int(round(material.GetZ()))
+            if z >= 1:
+                nuclei[ion_pdg(z, int(round(material.GetA())))] = material.GetName()
+            continue
+        for i in range(material.GetNelements()):
             element = material.GetElement(i)
             z = int(round(element.Z()))
             if z < 1:

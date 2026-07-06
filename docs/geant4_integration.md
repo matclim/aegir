@@ -110,6 +110,16 @@ unloading, causing crashes. This is a known Geant4 limitation.
 | `regions` | map | `{}` | Volume name pattern to production cut (mm) mapping |
 | `export_gdml` | string | *(unset)* | Write the constructed geometry to this GDML file after initialisation. Errors if the file exists. Lets external tools (e.g. the GENIE event generator) use exactly the geometry Geant4 tracks in |
 
+For consumers that read the exported file with ROOT's TGeo importer, run
+`scripts/gdml_fix_element_names.py` on it first: ROOT confuses materials
+and elements that share a name after pointer-suffix stripping (Geant4's
+NIST materials routinely do — material "Iron" made of element "Iron")
+and silently imports them as empty mixtures. The script renames the
+colliding elements; the physics is unchanged.
+`scripts/gdml_target_nuclei.py` then lists the nuclide PDG codes of the
+geometry — e.g. the target list neutrino cross-section splines must
+cover.
+
 Example workflow configuration:
 
 ```jsonnet
