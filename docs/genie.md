@@ -11,7 +11,8 @@ while everything here only touches ROOT files.
 A tighter integration — calling GENIE as a library so that the neutrino flux
 and the detector geometry enter the interaction sampling directly — is planned
 as a separate, optional plugin package. The reader below stays useful as the
-validation baseline for that.
+validation baseline for that. The flux input format for the library
+integration is specified in [neutrino_flux.md](neutrino_flux.md).
 
 ## Producing an input file
 
