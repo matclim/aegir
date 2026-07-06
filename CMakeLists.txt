@@ -31,7 +31,7 @@ find_package(
     ROOT
     6.40
     REQUIRED
-    COMPONENTS Core RIO Hist MathCore ROOTNTuple
+    COMPONENTS Core RIO Tree Hist MathCore ROOTNTuple
 )
 find_package(Geant4 REQUIRED)
 
@@ -160,6 +160,11 @@ aegir_add_plugin(
     file_source
     LIBS SHiP::SHiPDataModel ROOT::ROOTNTuple ROOT::RIO spdlog::spdlog
     INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+aegir_add_plugin(
+    genie_reader_source
+    LIBS SHiP::SHiPDataModel ROOT::RIO ROOT::Tree
 )
 
 # Standalone Pythia8 benchmark (no Phlex dependency)

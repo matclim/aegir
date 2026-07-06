@@ -74,6 +74,13 @@
     tau0_threshold: 1.0,
   },
 
+  // Neutrino interactions pre-generated with GENIE, read from a rootracker
+  // file (gntpc -f rootracker); see docs/genie.md for how to produce one.
+  genie_reader:: {
+    cpp: 'genie_reader_source',
+    file: 'genie_events.rootracker.root',
+  },
+
   // ── modules ────────────────────────────────────────────────────────────
   geant4:: {
     cpp: 'geant4_module',
