@@ -38,7 +38,7 @@
 #include <SHiP/SimResult.hpp>
 #include <atomic>
 #include <cmath>
-#include <fstream>
+#include <filesystem>
 #include <future>
 #include <map>
 #include <memory>
@@ -233,7 +233,7 @@ class Geant4Sim {
           if (!cfg_.export_gdml.empty()) {
             // G4GDMLParser::Write aborts via G4Exception on an existing
             // file; check first to fail with a catchable, clear error.
-            if (std::ifstream{cfg_.export_gdml}.good())
+            if (std::filesystem::exists(cfg_.export_gdml))
               throw std::runtime_error(
                   "geant4_module: export_gdml target '" + cfg_.export_gdml +
                   "' already exists — remove it or choose another path");
