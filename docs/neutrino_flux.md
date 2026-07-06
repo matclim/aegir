@@ -105,6 +105,24 @@ matching the 2018 histogram extraction. Charm/beauty/tau-descended
 neutrinos are excluded from min. bias samples (they come from the
 dedicated productions) unless `--keep-charm` is given.
 
+### 2018 production samples
+
+POT equivalents of the FairShip background productions on EOS
+(`/eos/experiment/ship/data/Mbias/background-prod-2018/`, world-readable
+via `root://eospublic.cern.ch/`), from the numbers documented in
+FairShip's `extractNeutrinosAndUpdateWeight.py`:
+
+| sample | files | total POT | per chunk |
+|:---|:---|:---|:---|
+| min. bias, E > 10 GeV (`pythia8_Geant4_10.0_c*.root`) | 67 (c0…c66000) | 65.041e9 | 0.9708e9 |
+| min. bias, E > 1 GeV (`pythia8_Geant4_1.0_c*.root`) | 19 (c0…c18000) | 1.8e9 | 0.0947e9 |
+| charm (`pythia8_Geant4_charm_*_10.0.root`) | 15 cycles | 153.3e9 | — |
+| beauty (`pythia8_Geant4_beauty_5336B_10.0.root`) | 1 | 5336e9 | — |
+
+Example: one 10 GeV chunk converted with the vetoPoint selection yields
+about 5.8 × 10⁵ neutrino rays (ν_μ-dominated, K± parents leading, mean
+energy ≈ 17 GeV).
+
 ## Open points for the neutrino group
 
 - Field list: is parent-at-decay enough, or should polarisation
