@@ -66,6 +66,17 @@ META_FIELDS = (
 )
 
 
+def selection_arg(value):
+    """Validate --selection: 'mctrack' or 'points:<branch>' with a branch."""
+    if value == "mctrack":
+        return value
+    if value.startswith("points:") and value[len("points:") :]:
+        return value
+    raise argparse.ArgumentTypeError(
+        "must be 'mctrack' or 'points:<branch>' (e.g. points:vetoPoint)"
+    )
+
+
 def make_writer(fields, name, target):
     model = ROOT.RNTupleModel.Create()
     for field_name, field_type in fields:
@@ -291,6 +302,7 @@ def main():
     p_convert.add_argument(
         "--selection",
         default="mctrack",
+        type=selection_arg,
         help="'mctrack' (all neutrino tracks, default) or 'points:<branch>' (only neutrinos with a point in that scoring branch, e.g. points:vetoPoint)",
     )
     p_convert.add_argument(
