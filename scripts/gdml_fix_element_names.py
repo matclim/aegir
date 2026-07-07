@@ -41,8 +41,11 @@ def main():
     with open(args.infile, encoding="utf-8") as f:
         gdml = f.read()
 
-    element_names = set(re.findall(r'<element name="([^"]+)"', gdml))
-    material_names = set(re.findall(r'<material name="([^"]+)"', gdml))
+    # Match the name attribute regardless of its position in the tag: don't
+    # assume Geant4/ROOT always emits name first, so collisions can't be
+    # missed silently.
+    element_names = set(re.findall(r'<element\b[^>]*?\bname="([^"]+)"', gdml))
+    material_names = set(re.findall(r'<material\b[^>]*?\bname="([^"]+)"', gdml))
     material_stripped = {stripped(n) for n in material_names}
 
     colliding = sorted(n for n in element_names if stripped(n) in material_stripped)

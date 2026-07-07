@@ -37,13 +37,13 @@ def collect_nuclei(geo):
             continue
         if material.GetNelements() == 0 or not material.GetElement(0):
             # Simple material defined directly by Z/A, no element table.
-            z = int(round(material.GetZ()))
+            z = round(material.GetZ())
             if z >= 1:
-                nuclei[ion_pdg(z, int(round(material.GetA())))] = material.GetName()
+                nuclei[ion_pdg(z, round(material.GetA()))] = material.GetName()
             continue
         for i in range(material.GetNelements()):
             element = material.GetElement(i)
-            z = int(round(element.Z()))
+            z = round(element.Z())
             if z < 1:
                 continue
             if element.GetNisotopes() > 0:
@@ -53,7 +53,7 @@ def collect_nuclei(geo):
                         continue
                     nuclei[ion_pdg(z, isotope.GetN())] = element.GetName()
             else:
-                nuclei[ion_pdg(z, int(round(element.A())))] = element.GetName()
+                nuclei[ion_pdg(z, round(element.A()))] = element.GetName()
     return nuclei
 
 

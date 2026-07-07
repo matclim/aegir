@@ -231,12 +231,20 @@ class Geant4Sim {
           physics_list_ = physics;
 
           if (!cfg_.export_gdml.empty()) {
-            // G4GDMLParser::Write aborts via G4Exception on an existing
-            // file; check first to fail with a catchable, clear error.
+            // G4GDMLParser::Write aborts via G4Exception on some write
+            // failures; pre-check the cases we can to fail with a catchable,
+            // clear error instead. Only the existing-file and missing-parent-
+            // directory cases are validated here — other fatal write errors
+            // (e.g. a read-only directory) remain Geant4's responsibility.
             if (std::filesystem::exists(cfg_.export_gdml))
               throw std::runtime_error(
                   "geant4_module: export_gdml target '" + cfg_.export_gdml +
                   "' already exists — remove it or choose another path");
+            auto parent = std::filesystem::path(cfg_.export_gdml).parent_path();
+            if (!parent.empty() && !std::filesystem::exists(parent))
+              throw std::runtime_error(
+                  "geant4_module: export_gdml target directory '" +
+                  parent.string() + "' does not exist");
             G4GDMLParser parser;
             parser.Write(cfg_.export_gdml, world_pv_);
             spdlog::info("geant4_module: geometry exported to {}",
