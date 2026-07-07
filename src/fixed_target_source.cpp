@@ -81,7 +81,8 @@ class FixedTargetSource : public phlex::source {
         interaction_length_ * std::log(1.0 - u * (1.0 - exp_ratio));
 
     auto& pythia = proton_target ? *pythia_pp_ : *pythia_pn_;
-    aegir::next_event(pythia, "FixedTargetSource");
+    aegir::next_event(pythia, proton_target ? "FixedTargetSource (pp)"
+                                            : "FixedTargetSource (pn)");
 
     return aegir::extract_particles<SHiP::MCParticle>(pythia.event,
                                                       z_interaction);

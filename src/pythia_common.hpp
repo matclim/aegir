@@ -16,6 +16,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace aegir {
@@ -49,7 +50,7 @@ void stabilise_long_lived(Pythia& pythia, double tau0_threshold) {
 // empty entries into the output (same convention as Pythia8MTSource
 // exhaustion).
 template <typename Pythia>
-void next_event(Pythia& pythia, char const* source_name,
+void next_event(Pythia& pythia, std::string_view source_name,
                 int max_attempts = 10) {
   for (int attempt = 0; attempt < max_attempts; ++attempt)
     if (pythia.next()) return;
