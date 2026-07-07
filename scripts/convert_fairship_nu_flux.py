@@ -157,8 +157,6 @@ def convert(args):
 
     for input_name in args.inputs:
         f = ROOT.TFile.Open(input_name)
-        if not f or f.IsZombie():
-            raise SystemExit(f"error: cannot open {input_name}")
         tree = f.Get("cbmsim")
         if not tree:
             raise SystemExit(f"error: no cbmsim tree in {input_name}")
@@ -239,6 +237,10 @@ def merge(args):
                 f"error: {input_name} has schema v{meta['schema_version']}, expected v{SCHEMA_VERSION}"
             )
         file_pot = meta["pot"]
+        if file_pot <= 0:
+            raise SystemExit(
+                f"error: {input_name} reports non-positive pot={file_pot!r}, cannot rescale"
+            )
         scale = args.pot / file_pot
         max_energy = max(max_energy, meta["max_energy"])
         descriptions.append(f"{input_name} (pot={file_pot:.4g}, weight x{scale:.4g})")
