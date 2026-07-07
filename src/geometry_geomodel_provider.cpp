@@ -46,6 +46,16 @@ class GeoModelGeometrySource : public SHiP::IGeometrySource {
       // Wrap the logical volume in a physical volume placement (world)
       world_ = new G4PVPlacement(nullptr, G4ThreeVector(), worldLV,
                                  worldLV->GetName(), nullptr, false, 0);
+
+      // The GeoModel tree is redundant once the Geant4 geometry is built: the
+      // GeoModel->G4 conversion produced independent G4 objects owned by the G4
+      // stores, and nothing consults the service afterwards. Release it here —
+      // on the master thread, during Construct(), with all G4/GeoModel state
+      // still alive and no worker threads running — instead of holding it until
+      // program teardown. This reclaims the tree's memory for the rest of the
+      // run and keeps the only non-trivial destructor on the GeoModel path off
+      // the teardown path (investigated in the context of issue #68).
+      service_.reset();
     });
     return world_;
   }
