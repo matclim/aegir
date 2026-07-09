@@ -11,9 +11,19 @@ This is the target list a neutrino event generator needs cross-section
 splines for: GENIE's geometry driver samples interactions on every
 nuclide present in the scanned volume.
 
-Elements defined with explicit isotopes are expanded; natural elements
-without isotope tables are emitted with their mass number rounded, which
-matches how GENIE's ROOTGeomAnalyzer interprets them.
+Two views are combined, because different GENIE configurations request
+different nuclides and splines must exist for whatever is requested:
+
+- per element with the *averaged* mass number rounded — what GENIE's
+  ROOTGeomAnalyzer actually asks for (it reads TGeoElement::A() and
+  ignores isotope tables), producing e.g. Ni-59 and Cu-64, "nuclides"
+  that no isotope expansion contains;
+- the isotope expansion of every element, covering configurations that
+  do resolve isotopes.
+
+Verified against gevgen_fnal 3.06.02, which aborts with an
+`Assertion fUseSplines' failed` when the averaged-A nuclide of any
+geometry element is missing from the spline file.
 
 Usage: gdml_target_nuclei.py geometry.gdml [--gmkspl]
   --gmkspl  print a single comma-separated list suitable for `gmkspl -t`
@@ -46,14 +56,14 @@ def collect_nuclei(geo):
             z = round(element.Z())
             if z < 1:
                 continue
-            if element.GetNisotopes() > 0:
-                for j in range(element.GetNisotopes()):
-                    isotope = element.GetIsotope(j)
-                    if element.GetRelativeAbundance(j) <= 0:
-                        continue
-                    nuclei[ion_pdg(z, isotope.GetN())] = element.GetName()
-            else:
-                nuclei[ion_pdg(z, round(element.A()))] = element.GetName()
+            # Averaged-A nuclide: what ROOTGeomAnalyzer requests.
+            nuclei[ion_pdg(z, round(element.A()))] = element.GetName()
+            # Isotope expansion: for isotope-resolving configurations.
+            for j in range(element.GetNisotopes()):
+                isotope = element.GetIsotope(j)
+                if element.GetRelativeAbundance(j) <= 0:
+                    continue
+                nuclei[ion_pdg(z, isotope.GetN())] = element.GetName()
     return nuclei
 
 
