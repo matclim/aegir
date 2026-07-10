@@ -268,8 +268,11 @@ class Geant4Sim {
         // dereferences a null per-thread base (e.g. ~G4PVPlacement →
         // GetRotation → G4PVData) and segfaults (#68). This thread ran the
         // master initialisation, so the same deletions are safe here, and the
-        // stores' destructors are left with nothing to delete. Order follows
-        // the reference chain: regions → physical → logical → solids.
+        // stores' destructors are left with nothing to delete. The relative
+        // order of the Clean() calls is immaterial: every CleanStore() locks
+        // its objects before deleting them, which suppresses all
+        // cross-store references (e.g. ~G4LogicalVolume skips its
+        // fRegion->RemoveRootLogicalVolume backreference when locked).
         G4GeometryManager::GetInstance()->OpenGeometry();
         G4RegionStore::Clean();
         G4PhysicalVolumeStore::Clean();
