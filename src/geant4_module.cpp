@@ -19,12 +19,17 @@
 #include <G4Event.hh>
 #include <G4EventManager.hh>
 #include <G4GDMLParser.hh>
+#include <G4GeometryManager.hh>
+#include <G4LogicalVolumeStore.hh>
 #include <G4MTRunManager.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
 #include <G4PhysListFactory.hh>
+#include <G4PhysicalVolumeStore.hh>
 #include <G4PrimaryParticle.hh>
 #include <G4PrimaryVertex.hh>
+#include <G4RegionStore.hh>
+#include <G4SolidStore.hh>
 #include <G4StateManager.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4Threading.hh>
@@ -255,6 +260,21 @@ class Geant4Sim {
         ready_promise.set_value();
 
         shutdown_future_.wait();
+
+        // Empty the geometry stores now, on this thread. Their static
+        // singletons' destructors run at process exit on the program's main
+        // thread, which never initialised Geant4's thread-local split-class
+        // data — so mass-deleting the still-registered volumes there
+        // dereferences a null per-thread base (e.g. ~G4PVPlacement →
+        // GetRotation → G4PVData) and segfaults (#68). This thread ran the
+        // master initialisation, so the same deletions are safe here, and the
+        // stores' destructors are left with nothing to delete. Order follows
+        // the reference chain: regions → physical → logical → solids.
+        G4GeometryManager::GetInstance()->OpenGeometry();
+        G4RegionStore::Clean();
+        G4PhysicalVolumeStore::Clean();
+        G4LogicalVolumeStore::Clean();
+        G4SolidStore::Clean();
         // Intentionally leak rm (G4 singleton teardown is unsafe)
       } catch (...) {
         ready_promise.set_exception(std::current_exception());
