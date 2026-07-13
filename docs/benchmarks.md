@@ -47,20 +47,17 @@ backends no longer exist. Current numbers, measured on a different
 machine (i5-1334U: 2 P-cores + 8 E-cores, 12 threads), 2000 events,
 particle gun (muons, 10–100 GeV), FTFP_BERT, noop output:
 
-| Config | glibc malloc | jemalloc |
-|:---|---:|---:|
-| g4=4, `-j 4` | 5.58 ± 0.31 s | 5.00 ± 0.27 s (−10%) |
-| g4=8, `-j 8` | 4.72 ± 0.16 s | 4.25 s median (−11%) |
-| g4=12, `-j 12` | 4.19 ± 0.17 s | 3.57 ± 0.21 s (−15%) |
+| Config | time |
+|:---|---:|
+| g4=4, `-j 4` | 5.58 ± 0.31 s |
+| g4=8, `-j 8` | 4.72 ± 0.16 s |
+| g4=12, `-j 12` | 4.19 ± 0.17 s |
 
 Findings:
 
 - Throughput keeps improving up to the full hardware thread count on
   this machine — the earlier "plateau at physical cores" conclusion was
   an artefact of the queue-based backend.
-- jemalloc (preloaded for phlex via `scripts/shims/phlex`, see
-  `activate.sh`) removes glibc malloc arena contention: 10–15%, growing
-  with concurrency. `AEGIR_NO_JEMALLOC=1` opts out.
 - Voluntary context switches are ~2 per event, independent of thread
   count — the phlex event-loop driver hands each event index across a
   dedicated driver thread (two semaphore wake/wait pairs per event).
