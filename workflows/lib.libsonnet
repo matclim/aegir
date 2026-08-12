@@ -33,7 +33,23 @@
   geomodel_geometry:: {
     cpp: 'geometry_geomodel_provider',
     db_file: 'ship_geometry.db',
-    sensitive_volumes: ['ScoringPlane'],
+    // Index in this list becomes SimHit::detectorId, so order matters and
+    // must follow SHiP::detector_id for slots 0-4. Slots 5+ are overflow:
+    // several detectors are built from differently-named volumes with no
+    // common substring that excludes their absorbers or envelopes, and a
+    // pattern can only carry one id. Remap in analysis:
+    //   UpstreamTagger = {0, 5}   Calorimeter = {3, 6, 7, 8}
+    sensitive_volumes: [
+      '/SHiP/upstream_tagger/coarse_tile',  // 0 UBT, big tiles
+      '/SHiP/decay_volume/sbt/sensors',     // 1 SBT liquid scintillator
+      '/SHiP/trackers/straw_gas',           // 2 straw gas, not straw_wall
+      '/SHiP/calorimeter/ecal/',            // 3 ECAL
+      'TimDetBar',                          // 4 timing detector
+      '/SHiP/upstream_tagger/fine_tile',    // 5 UBT, small tiles
+      '/SHiP/calorimeter/hcal/',            // 6 HCAL
+      '/SHiP/calorimeter/wide_pvt',         // 7 calorimeter PVT
+      '/SHiP/calorimeter/thin_ps',          // 8 calorimeter plastic scint
+    ],
   },
 
   // The generator sources follow the same seeding convention as the geant4

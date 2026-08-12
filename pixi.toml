@@ -56,6 +56,9 @@ shipgeometry = "*"
 # unversioned soname means ld.so dedups the library process-wide and the
 # first-loaded copy wins.
 shipgeometryservice = ">=0.3"
+# Imported by scripts/plot_muon_momentum.py but never declared, so that
+# script fails on a clean environment.
+matplotlib = "*"
 
 [activation]
 scripts = ["activate.sh"]
