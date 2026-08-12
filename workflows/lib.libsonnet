@@ -85,6 +85,14 @@
     file: 'genie_events.rootracker.root',
   },
 
+  // LLP decays pre-generated with EventCalc-SHiP, read from a .dat record.
+  // Rows carry a per-event decay probability, published as the event weight;
+  // see docs/eventcalc.md.
+  eventcalc:: {
+    cpp: 'eventcalc_source',
+    file: 'eventcalc_events.dat',
+  },
+
   // ── modules ────────────────────────────────────────────────────────────
   // Without a `seed`, each run draws a random one (logged at startup, so a
   // run can be reproduced after the fact). Merge one in for reproducible

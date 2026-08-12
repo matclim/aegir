@@ -175,6 +175,12 @@ aegir_add_plugin(
     LIBS SHiP::SHiPDataModel SHiP::SHiPUnits ROOT::RIO ROOT::Tree
 )
 
+aegir_add_plugin(
+    eventcalc_source
+    LIBS SHiP::SHiPDataModel SHiP::SHiPUnits
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
 # Standalone Pythia8 benchmark (no Phlex dependency)
 add_executable(pythia8_benchmark benchmarks/pythia8_benchmark.cpp)
 target_link_libraries(
@@ -231,4 +237,19 @@ add_test(
 add_test(
     NAME writer_pool
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/writer_pool.sh
+)
+
+# EventCalc parser: a fixture covering padded rows, process names containing
+# the decay arrow, CRLF endings and both block-header forms. The parser is
+# standard-library only, so this links no Phlex, ROOT or Geant4.
+add_executable(test_eventcalc_reader tests/test_eventcalc_reader.cpp)
+target_include_directories(
+    test_eventcalc_reader
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_test(
+    NAME eventcalc_reader
+    COMMAND
+        test_eventcalc_reader
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/eventcalc_sample.dat
 )

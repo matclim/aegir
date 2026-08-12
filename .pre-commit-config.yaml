@@ -17,6 +17,9 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
 
+        # EventCalc fixtures carry CRLF on purpose: the parser test covers
+        # files moved between machines. Normalising them silently voids it.
+        exclude: ^tests/data/.*\.dat$
   # Unit-safety fences (see docs/units.md). pygrep hooks fail on any match.
   - repo: local
     hooks:

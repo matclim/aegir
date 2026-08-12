@@ -29,6 +29,7 @@ An [automatic class reference](https://shipsoft.github.io/aegir/) is built using
 | `geometry_gdml_provider` | Provider | GDML file loader |
 | `geometry_geomodel_provider` | Provider | GeoModel .db via SHiPGeometryService (optional) |
 | `geant4_module` | Transform | Geant4 simulation (direct worker, configurable concurrency) |
+| `eventcalc_source` | Source | EventCalc-SHiP LLP decay records (see `docs/eventcalc.md`) |
 | `sim_output_module` | Observer | RNTuple parallel writer + validation histograms |
 
 ## Dependencies

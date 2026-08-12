@@ -77,6 +77,9 @@ smoke = { cmd = "scripts/smoke.sh", depends-on = ["build"] }
 ci-physics-smoke = { cmd = "bash -c 'phlex -c <(jsonnet workflows/gun_st_nofield_smoke.jsonnet)'", depends-on = ["build"] }
 ci-extract-metrics = "ship-metrics-extract . -o metrics-physics-smoke.json --pretty --config ci/metrics_config.yaml"
 ci-render-plots = "ship-metrics-render gun_st_nofield_smoke_validation.root --output-dir plots/physics-smoke --job physics-smoke --config default"
+# Decay count of an EventCalc .dat record, for the driver's event total —
+# the text-input counterpart of count_entries (see docs/eventcalc.md).
+count_eventcalc_events = "python scripts/count_eventcalc_events.py"
 clean = "rm -rf build"
 
 [feature.bench.dependencies]

@@ -1,2 +1,6 @@
 * text=auto
 *.sh text eol=lf
+
+# EventCalc fixtures deliberately carry CRLF line endings so the parser test
+# keeps covering them; never normalise these.
+tests/data/*.dat -text
