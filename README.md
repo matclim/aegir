@@ -163,7 +163,8 @@ Three geometry providers are available, selectable via workflow configuration:
 
 ## Geant4 integration
 
-See [docs/geant4_integration.md](docs/geant4_integration.md) for details on the direct worker integration strategy.
+See [docs/geant4_integration.md](docs/geant4_integration.md) for details on the direct worker integration strategy,
+and [docs/sensitive_detectors.md](docs/sensitive_detectors.md) for the `sd_mode` options and how hits are merged.
 
 ## Benchmarking
 

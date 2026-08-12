@@ -500,7 +500,9 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
       .verbosity = config.get<int>("verbosity", 0),
       .concurrency = config.get<int>("concurrency", int{active_parallelism}),
       .seed = seed,
-      .sd_mode = sd_mode_str == "crossing" ? SDMode::crossing : SDMode::scoring,
+      .sd_mode = sd_mode_str == "crossing"  ? SDMode::crossing
+                 : sd_mode_str == "merged" ? SDMode::merged
+                                           : SDMode::scoring,
       .ke_threshold = ke_threshold,
       .energy_cut = config.get<bool>("energy_cut", false),
       .energy_cut_threshold = aegir::get_quantity(

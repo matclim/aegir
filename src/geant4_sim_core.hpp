@@ -18,6 +18,7 @@
 #include <SHiP/QuantityView.hpp>
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
+#include <algorithm>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
@@ -93,6 +94,72 @@ class ScoringSD : public G4VSensitiveDetector {
     ship::view::setPathLength(hit, aegir::clhep::length(step->GetStepLength()));
     tl_hits.push_back(hit);
     return true;
+  }
+
+ private:
+  DetectorIdMap detector_ids_;
+};
+
+// One open accumulator per (placement, track) while an event is in flight.
+// Namespace-scope thread_local for the same reason as tl_hits: G4 worker
+// threads must not share it.
+struct OpenHit {
+  SimHit hit;       // taken from the first contributing step
+  double edep = 0;  // Geant4 internal units, summed
+  double path = 0;  // Geant4 internal units, summed
+};
+inline thread_local std::unordered_map<std::uint64_t, OpenHit> tl_open_hits;
+
+// Like ScoringSD, but merges every step a track takes inside one placement
+// into a single SimHit, emitted at end of event. This is what readout-like
+// output wants: a track crossing a straw produces one hit carrying the total
+// deposit, not one hit per Geant4 step.
+//
+// Position, momentum and time come from the first step (the entry point);
+// energyDeposit and pathLength are summed. A track that leaves and re-enters
+// the same placement merges into the same hit, since the key has no visit
+// counter. See docs/sensitive_detectors.md.
+class MergedScoringSD : public G4VSensitiveDetector {
+ public:
+  MergedScoringSD(G4String const& name, DetectorIdMap detector_ids)
+      : G4VSensitiveDetector(name), detector_ids_{std::move(detector_ids)} {}
+
+  void Initialize(G4HCofThisEvent*) override { tl_open_hits.clear(); }
+
+  G4bool ProcessHits(G4Step* step, G4TouchableHistory*) override {
+    double const edep = step->GetTotalEnergyDeposit();
+    if (edep <= 0) return false;
+
+    auto* pre = step->GetPreStepPoint();
+    auto const node = geometry_node_id(pre->GetTouchable());
+    auto const track = step->GetTrack()->GetTrackID();
+    auto const key =
+        (static_cast<std::uint64_t>(static_cast<std::uint32_t>(node)) << 32) |
+        static_cast<std::uint32_t>(track);
+
+    auto [it, inserted] = tl_open_hits.try_emplace(key);
+    if (inserted) it->second.hit = make_base_hit(step, detector_ids_);
+    it->second.edep += edep;
+    it->second.path += step->GetStepLength();
+    return true;
+  }
+
+  void EndOfEvent(G4HCofThisEvent*) override {
+    auto const first = tl_hits.size();
+    for (auto& [key, open] : tl_open_hits) {
+      ship::view::setEnergyDeposit(open.hit, aegir::clhep::energy(open.edep));
+      ship::view::setPathLength(open.hit, aegir::clhep::length(open.path));
+      tl_hits.push_back(open.hit);
+    }
+    // unordered_map iteration order is unspecified and varies with insertion
+    // history, so sort the batch: the determinism test compares output across
+    // runs and would otherwise fail spuriously.
+    std::sort(tl_hits.begin() + static_cast<std::ptrdiff_t>(first),
+              tl_hits.end(), [](SimHit const& a, SimHit const& b) {
+                return std::pair{a.trackId, a.geometryNodeId} <
+                       std::pair{b.trackId, b.geometryNodeId};
+              });
+    tl_open_hits.clear();
   }
 
  private:

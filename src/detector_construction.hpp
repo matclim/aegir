@@ -29,7 +29,7 @@
 
 namespace SHiP::g4 {
 
-enum class SDMode { scoring, crossing };
+enum class SDMode { scoring, crossing, merged };
 
 class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
   IGeometrySource const*
@@ -99,6 +99,8 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     G4VSensitiveDetector* sd = nullptr;
     if (sd_mode_ == SDMode::crossing) {
       sd = new CrossingSD("CrossingSD", detector_ids, ke_threshold_);
+    } else if (sd_mode_ == SDMode::merged) {
+      sd = new MergedScoringSD("MergedScoringSD", detector_ids);
     } else {
       sd = new ScoringSD("ScoringSD", detector_ids);
     }
