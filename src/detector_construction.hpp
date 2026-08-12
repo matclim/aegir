@@ -36,7 +36,8 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
       source_;  // non-owning; Job-layer product outlives the G4 run
   ship::IFieldSource const* field_source_;  // non-owning; may have no regions
   SDMode sd_mode_;
-  ship::Energy ke_threshold_;  // used by CrossingSD
+  ship::Energy ke_threshold_;   // used by CrossingSD
+  bool merge_across_tracks_{};  // used by MergedScoringSD
   std::vector<std::pair<std::string, ship::Length>>
       regions_;  // pattern -> production cut
 
@@ -45,11 +46,13 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
       IGeometrySource const& source, ship::IFieldSource const& field_source,
       SDMode sd_mode = SDMode::scoring,
       ship::Energy ke_threshold = ship::Energy::zero(),
-      std::vector<std::pair<std::string, ship::Length>> regions = {})
+      std::vector<std::pair<std::string, ship::Length>> regions = {},
+      bool merge_across_tracks = false)
       : source_{&source},
         field_source_{&field_source},
         sd_mode_{sd_mode},
         ke_threshold_{ke_threshold},
+        merge_across_tracks_{merge_across_tracks},
         regions_{std::move(regions)} {}
 
   // Called once, on ship::geometry_thread() (the run manager is initialised
@@ -100,7 +103,8 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     if (sd_mode_ == SDMode::crossing) {
       sd = new CrossingSD("CrossingSD", detector_ids, ke_threshold_);
     } else if (sd_mode_ == SDMode::merged) {
-      sd = new MergedScoringSD("MergedScoringSD", detector_ids);
+      sd = new MergedScoringSD("MergedScoringSD", detector_ids,
+                               merge_across_tracks_);
     } else {
       sd = new ScoringSD("ScoringSD", detector_ids);
     }

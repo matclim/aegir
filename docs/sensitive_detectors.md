@@ -48,3 +48,43 @@ Two caveats. The id is stable within a run but **not** across geometry changes
 or between releases — never persist it as a channel number. And being a hash
 it can in principle collide; it identifies a node, it does not encode a
 position in the hierarchy.
+
+## merge_across_tracks
+
+By default `merged` keys on `(geometryNodeId, trackId)`, so two particles
+depositing in the same volume produce two hits. Setting
+
+```jsonnet
+    geant4: lib.geant4 { sd_mode: 'merged', merge_across_tracks: true },
+```
+
+widens the key to the placement alone: every particle depositing in one volume
+yields a single hit. Only `energyDeposit` and `pathLength` combine
+meaningfully. The rest degrade:
+
+| field | with `merge_across_tracks` |
+|:---|:---|
+| `energyDeposit`, `pathLength` | summed over all contributing tracks |
+| `trackId`, `pdgCode` | the largest single-track contributor |
+| `position`, `momentum`, `time` | the first step to arrive in the placement |
+
+**This discards per-particle truth.** Questions like "was this SBT hit caused
+by the signal muon or by a shower stray" and truth matching for tracking
+efficiency stop being answerable. The setting is off by default for that
+reason.
+
+What it buys is size. On a sample of nine 1 GeV HNL decays through the full
+GeoModel geometry, hits per event dropped by factors of 1.3 to 13 (mean around
+4), the largest reductions being showers where dozens of secondaries pepper
+one scintillator cell.
+
+The alternative is to leave it off and merge across tracks at digitisation
+instead, where a straw's several truth hits become one `StrawTubesHit` and the
+links back to the contributing particles can be kept. That also fits the
+hierarchy in the data model, which combines pile-up from several collisions at
+the time-frame level — above a single Geant4 event. Merging inside the
+sensitive detector happens before that stage, so the information is gone by
+the time it would be needed again.
+
+Use `merge_across_tracks` when output size dominates and per-particle truth is
+not needed; prefer digitisation when it is.

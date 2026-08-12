@@ -112,6 +112,10 @@ struct Geant4SimConfig {
   std::uint32_t seed = 0;
   SDMode sd_mode = SDMode::scoring;
   ship::Energy ke_threshold = ship::Energy::zero();
+  // sd_mode 'merged' only: one hit per placement rather than per
+  // (placement, track). Discards per-particle truth — see
+  // docs/sensitive_detectors.md.
+  bool merge_across_tracks = false;
   bool energy_cut = false;
   ship::Energy energy_cut_threshold = ship::Energy::zero();
   ship::Energy particle_ke_cut = ship::Energy::zero();
@@ -341,7 +345,8 @@ class Geant4Sim {
 
     field_ = field;  // keep alive for the G4 run
     detector_ = new ConfigurableDetectorConstruction(
-        *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions);
+        *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions,
+        cfg_.merge_across_tracks);
 
     // Master initialisation runs on the process-wide geometry thread: only
     // one thread per process may create Geant4 geometry (G4GeomSplitter's
@@ -504,6 +509,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
                  : sd_mode_str == "merged" ? SDMode::merged
                                            : SDMode::scoring,
       .ke_threshold = ke_threshold,
+      .merge_across_tracks = config.get<bool>("merge_across_tracks", false),
       .energy_cut = config.get<bool>("energy_cut", false),
       .energy_cut_threshold = aegir::get_quantity(
           config, "energy_cut_threshold", ship::Energy{ke_threshold}),

@@ -37,15 +37,15 @@ using DetectorIdMap = std::unordered_map<G4LogicalVolume*, int>;
 
 // Stable identifier for one placement — a node of the touchable history.
 // detectorId only names the subsystem, and a single logical volume can be
-// placed thousands of times (9600 copies of /SHiP/trackers/straw_gas share one
-// G4LogicalVolume), so the copy numbers along the touchable path are what
+// placed thousands of times (9600 copies of /SHiP/trackers/straw_gas share
+// one G4LogicalVolume), so the copy numbers along the touchable path are what
 // distinguish one straw from another. FNV-1a over (copy number, volume) at
-// every depth, folded to 31 bits because SimHit::geometryNodeId is int32 and a
-// negative id would read as a sentinel.
+// every depth, folded to 31 bits because SimHit::geometryNodeId is int32 and
+// a negative id would read as a sentinel.
 //
-// Stable within a run but not across geometry changes, and being a hash it can
-// in principle collide: it identifies a node, it does not encode a position in
-// the hierarchy. Never persist it as a channel number.
+// The id is stable within a run but not across geometry changes, and being a
+// hash it can in principle collide; it identifies a node, it does not encode
+// a position in the hierarchy.
 inline std::int32_t geometry_node_id(G4VTouchable const* touchable) {
   std::uint64_t h = 1469598103934665603ull;  // FNV-1a offset basis
   auto mix = [&h](std::uint64_t v) {
@@ -102,27 +102,45 @@ class ScoringSD : public G4VSensitiveDetector {
 
 // One open accumulator per (placement, track) while an event is in flight.
 // Namespace-scope thread_local for the same reason as tl_hits: G4 worker
-// threads must not share it.
+// threads must not share it, and this does not depend on whether the SD
+// object itself is per-thread.
 struct OpenHit {
   SimHit hit;       // taken from the first contributing step
   double edep = 0;  // Geant4 internal units, summed
   double path = 0;  // Geant4 internal units, summed
+  // merge_across_tracks only: running total per contributing track, and the
+  // best seen so far. Held inside the accumulator rather than in a second
+  // thread_local map — two maps keyed alike but cleared independently drift
+  // apart as soon as Initialize/EndOfEvent and ProcessHits do not all run on
+  // the same thread, which crashed under multi-threading.
+  std::unordered_map<int, double> per_track;
+  double lead = 0;
 };
 inline thread_local std::unordered_map<std::uint64_t, OpenHit> tl_open_hits;
 
 // Like ScoringSD, but merges every step a track takes inside one placement
-// into a single SimHit, emitted at end of event. This is what readout-like
-// output wants: a track crossing a straw produces one hit carrying the total
-// deposit, not one hit per Geant4 step.
+// into a single SimHit, emitted at end of event. This is what you want for
+// readout-like output: a track crossing a straw produces one hit carrying the
+// total deposit, not one hit per Geant4 step.
 //
 // Position, momentum and time come from the first step (the entry point);
-// energyDeposit and pathLength are summed. A track that leaves and re-enters
-// the same placement merges into the same hit, since the key has no visit
-// counter. See docs/sensitive_detectors.md.
+// energyDeposit and pathLength are summed over the track's steps in that
+// placement. A track that leaves and re-enters the same placement merges into
+// the same hit, since the key does not include a visit counter.
+//
+// merge_across_tracks widens the key to the placement alone, so every particle
+// depositing in one volume yields a single hit. Only energyDeposit and
+// pathLength combine meaningfully: trackId and pdgCode are set from the
+// largest single-track contributor and position/momentum/time from the first
+// step to arrive there, so per-particle truth is lost. Off by default — see
+// docs/sensitive_detectors.md for when that trade is the right one.
 class MergedScoringSD : public G4VSensitiveDetector {
  public:
-  MergedScoringSD(G4String const& name, DetectorIdMap detector_ids)
-      : G4VSensitiveDetector(name), detector_ids_{std::move(detector_ids)} {}
+  MergedScoringSD(G4String const& name, DetectorIdMap detector_ids,
+                  bool merge_across_tracks = false)
+      : G4VSensitiveDetector(name),
+        detector_ids_{std::move(detector_ids)},
+        merge_across_tracks_{merge_across_tracks} {}
 
   void Initialize(G4HCofThisEvent*) override { tl_open_hits.clear(); }
 
@@ -134,13 +152,29 @@ class MergedScoringSD : public G4VSensitiveDetector {
     auto const node = geometry_node_id(pre->GetTouchable());
     auto const track = step->GetTrack()->GetTrackID();
     auto const key =
-        (static_cast<std::uint64_t>(static_cast<std::uint32_t>(node)) << 32) |
-        static_cast<std::uint32_t>(track);
+        merge_across_tracks_
+            ? static_cast<std::uint64_t>(static_cast<std::uint32_t>(node))
+            : (static_cast<std::uint64_t>(static_cast<std::uint32_t>(node))
+               << 32) |
+                  static_cast<std::uint32_t>(track);
 
     auto [it, inserted] = tl_open_hits.try_emplace(key);
     if (inserted) it->second.hit = make_base_hit(step, detector_ids_);
     it->second.edep += edep;
     it->second.path += step->GetStepLength();
+
+    if (merge_across_tracks_) {
+      // Attribute the hit to whichever track deposited the most in this
+      // placement. Tracks interleave, so accumulate each one's total and
+      // rewrite the identity when a new leader emerges.
+      auto const total = (it->second.per_track[track] += edep);
+      if (total > it->second.lead) {
+        it->second.lead = total;
+        it->second.hit.trackId = track;
+        it->second.hit.pdgCode =
+            step->GetTrack()->GetDefinition()->GetPDGEncoding();
+      }
+    }
     return true;
   }
 
@@ -152,7 +186,7 @@ class MergedScoringSD : public G4VSensitiveDetector {
       tl_hits.push_back(open.hit);
     }
     // unordered_map iteration order is unspecified and varies with insertion
-    // history, so sort the batch: the determinism test compares output across
+    // history, so sort the batch — the determinism test compares output across
     // runs and would otherwise fail spuriously.
     std::sort(tl_hits.begin() + static_cast<std::ptrdiff_t>(first),
               tl_hits.end(), [](SimHit const& a, SimHit const& b) {
@@ -164,6 +198,7 @@ class MergedScoringSD : public G4VSensitiveDetector {
 
  private:
   DetectorIdMap detector_ids_;
+  bool merge_across_tracks_;
 };
 
 // Records a SimHit when a track first enters the volume, regardless of
