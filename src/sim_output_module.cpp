@@ -23,6 +23,7 @@
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleParallelWriter.hxx>
 #include <ROOT/RNTupleWriteOptions.hxx>
+#include <SHiP/EventHeader.hpp>
 #include <SHiP/MCParticle.hpp>
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
@@ -57,6 +58,7 @@ struct FillState {
   // Field tokens cached once per context to avoid a per-event name lookup.
   // Entries and tokens belong to their context's clone of the model, so they
   // must stay together with the context.
+  ROOT::RFieldToken event_header;
   ROOT::RFieldToken mc_particles;
   ROOT::RFieldToken sim_hits;
   ROOT::RFieldToken sim_particles;
@@ -141,10 +143,12 @@ class MCRNTupleWriter {
   MCRNTupleWriter(std::string filename, std::size_t cluster_mib,
                   std::size_t n_contexts) {
     auto model = RNTupleModel::CreateBare();
+    model->MakeField<SHiP::EventHeader>("event_header");
     model->MakeField<std::vector<SHiP::MCParticle>>("mc_particles");
     writer_ = RNTupleParallelWriter::Recreate(
         std::move(model), "events", filename, make_write_options(cluster_mib));
     pool_.emplace(*writer_, n_contexts, [](FillState& state) {
+      state.event_header = state.entry->GetToken("event_header");
       state.mc_particles = state.entry->GetToken("mc_particles");
     });
     spdlog::info(
@@ -153,11 +157,14 @@ class MCRNTupleWriter {
         filename, n_contexts, cluster_mib);
   }
 
-  void write(std::vector<SHiP::MCParticle> const& particles) {
+  void write(std::vector<SHiP::MCParticle> const& particles,
+             SHiP::EventHeader const& header) {
     auto lease = pool_->acquire();
     auto& state = *lease;
-    // Bind the input directly for the duration of Fill (which only reads it),
-    // avoiding a full copy of the particle vector every event.
+    // Bind the inputs directly for the duration of Fill (which only reads
+    // them), avoiding a full copy of the particle vector every event.
+    state.entry->BindRawPtr(state.event_header,
+                            const_cast<SHiP::EventHeader*>(&header));
     state.entry->BindRawPtr(
         state.mc_particles,
         const_cast<std::vector<SHiP::MCParticle>*>(&particles));
@@ -179,12 +186,14 @@ class SimRNTupleWriter {
                    std::size_t cluster_mib, std::size_t n_contexts)
       : filter_empty_{filter_empty} {
     auto model = RNTupleModel::CreateBare();
+    model->MakeField<SHiP::EventHeader>("event_header");
     model->MakeField<std::vector<SHiP::MCParticle>>("mc_particles");
     model->MakeField<std::vector<SHiP::SimHit>>("sim_hits");
     model->MakeField<std::vector<SHiP::SimParticle>>("sim_particles");
     writer_ = RNTupleParallelWriter::Recreate(
         std::move(model), "events", filename, make_write_options(cluster_mib));
     pool_.emplace(*writer_, n_contexts, [](FillState& state) {
+      state.event_header = state.entry->GetToken("event_header");
       state.mc_particles = state.entry->GetToken("mc_particles");
       state.sim_hits = state.entry->GetToken("sim_hits");
       state.sim_particles = state.entry->GetToken("sim_particles");
@@ -196,13 +205,18 @@ class SimRNTupleWriter {
   }
 
   void write(std::vector<SHiP::MCParticle> const& particles,
-             SHiP::SimResult const& result) {
+             SHiP::SimResult const& result,
+             SHiP::EventHeader const& header) {
+    // The header is dropped with the rest of the event, never on its own —
+    // a header written without its particles would desynchronise the fields.
     if (filter_empty_ && result.hits.empty()) return;
 
     auto lease = pool_->acquire();
     auto& state = *lease;
     // Bind inputs directly for the duration of Fill (read-only), avoiding a
     // full copy of each vector every event.
+    state.entry->BindRawPtr(state.event_header,
+                            const_cast<SHiP::EventHeader*>(&header));
     state.entry->BindRawPtr(
         state.mc_particles,
         const_cast<std::vector<SHiP::MCParticle>*>(&particles));
@@ -473,8 +487,10 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     writer
         .observe("write_rntuple", &MCRNTupleWriter::write,
                  concurrency::unlimited)
-        .input_family(product_selector{.creator = "mc_particles"_id,
-                                       .layer = "event"_id});
+        .input_family(
+            product_selector{.creator = "mc_particles"_id, .layer = "event"_id},
+            product_selector{.creator = "event_header"_id,
+                             .layer = "event"_id});
 
     auto histogrammer = m.make<MCHistogrammer>(histo_file);
     histogrammer
@@ -499,7 +515,9 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
             product_selector{.creator = "mc_particles"_id, .layer = "event"_id},
             product_selector{.creator = "geant4"_id,
                              .layer = "event"_id,
-                             .suffix = "sim_result"_id});
+                             .suffix = "sim_result"_id},
+            product_selector{.creator = "event_header"_id,
+                             .layer = "event"_id});
 
     auto histogrammer = m.make<SimHistogrammer>(histo_file);
     histogrammer

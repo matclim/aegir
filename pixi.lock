@@ -391,7 +391,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h6afcf60_2.conda
       - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h238170a_2.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
-      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.3.0-ha28ff26_0.conda
+      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.4.0-ha28ff26_0.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_2.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.3.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
@@ -761,7 +761,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h6afcf60_2.conda
       - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h238170a_2.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
-      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.3.0-ha28ff26_0.conda
+      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.4.0-ha28ff26_0.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_2.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.3.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
@@ -1151,7 +1151,7 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h6afcf60_2.conda
       - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h238170a_2.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
-      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.3.0-ha28ff26_0.conda
+      - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.4.0-ha28ff26_0.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_2.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.3.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
@@ -4785,7 +4785,7 @@ packages:
   - __glibc >=2.17
   license: MIT
   purls:
-  - pkg:pypi/ruff?source=compressed-mapping
+  - pkg:pypi/ruff?source=hash-mapping
   run_exports: {}
   size: 9449104
   timestamp: 1785485613405
@@ -4994,7 +4994,7 @@ packages:
   - python_abi 3.14.* *_cp314
   license: BSD-2-Clause
   purls:
-  - pkg:pypi/wrapt?source=compressed-mapping
+  - pkg:pypi/wrapt?source=hash-mapping
   run_exports: {}
   size: 119163
   timestamp: 1785422126684
@@ -5852,7 +5852,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/click?source=compressed-mapping
+  - pkg:pypi/click?source=hash-mapping
   run_exports: {}
   size: 107155
   timestamp: 1783085363526
@@ -7492,7 +7492,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/setuptools?source=compressed-mapping
+  - pkg:pypi/setuptools?source=hash-mapping
   run_exports: {}
   size: 642081
   timestamp: 1783619174976
@@ -7621,7 +7621,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/tomlkit?source=compressed-mapping
+  - pkg:pypi/tomlkit?source=hash-mapping
   run_exports: {}
   size: 49054
   timestamp: 1784287707171
@@ -7827,22 +7827,22 @@ packages:
     - mp-units >=2.5.0,<2.6.0a0
   size: 110217
   timestamp: 1781445240307
-- conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.3.0-ha28ff26_0.conda
-  sha256: 897e129417ed0995381656f0fcd751616578ac5f633f275fb7651190d2e6ff75
-  md5: 140207d82101fdc1b819f1f5651cc093
+- conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.4.0-ha28ff26_0.conda
+  sha256: b8270b96f9f5cf5538bff7ede52d4cb240543455cf892291cd50c98336a4d1e1
+  md5: 9ef18521333c0c0aa8a972a3f464c27f
   depends:
-  - libstdcxx >=15
-  - libgcc >=15
+  - libstdcxx >=16
+  - libgcc >=16
   - __glibc >=2.17,<3.0.a0
-  - root_base >=6.40.2,<6.40.3.0a0
   - root_cxx_standard ==23
+  - root_base >=6.40.2,<6.40.3.0a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
-    - shipdatamodel >=0.3.0,<0.4.0a0
-  size: 75026
-  timestamp: 1784796592267
+    - shipdatamodel >=0.4.0,<0.5.0a0
+  size: 76065
+  timestamp: 1786535217531
 - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_2.conda
   sha256: ced7047718edd3c4dc7a9554c3bb009d6677185f5df3450b82ec484e20869829
   md5: a0448371feb1d1a3fa721cff6ca35b3b

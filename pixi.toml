@@ -46,7 +46,9 @@ cxx-compiler = "*"
 [feature.released.dependencies]
 # >=0.2: provides the SHiP::SHiPUnits target and SHiP/Units.hpp (mp-units
 # vocabulary) that the Geant4 CLHEP unit bridge links against.
-shipdatamodel = ">=0.2"
+# >=0.4: provides SHiP/EventHeader.hpp, the per-event weight and provenance
+# record every generator source publishes alongside mc_particles.
+shipdatamodel = ">=0.4"
 shipgeometry = "*"
 # >=0.3: process-wide geometry thread + shared service registry, both shared
 # between geant4_module and any other Geant4 geometry user (e.g. aegir-genie's
