@@ -14,9 +14,11 @@
 #include <G4UserTrackingAction.hh>
 #include <G4VProcess.hh>
 #include <G4VSensitiveDetector.hh>
+#include <G4VTouchable.hh>
 #include <SHiP/QuantityView.hpp>
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
+#include <cstdint>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -32,6 +34,32 @@ inline thread_local std::unordered_map<int, std::size_t> tl_track_map;
 
 using DetectorIdMap = std::unordered_map<G4LogicalVolume*, int>;
 
+// Stable identifier for one placement — a node of the touchable history.
+// detectorId only names the subsystem, and a single logical volume can be
+// placed thousands of times (9600 copies of /SHiP/trackers/straw_gas share one
+// G4LogicalVolume), so the copy numbers along the touchable path are what
+// distinguish one straw from another. FNV-1a over (copy number, volume) at
+// every depth, folded to 31 bits because SimHit::geometryNodeId is int32 and a
+// negative id would read as a sentinel.
+//
+// Stable within a run but not across geometry changes, and being a hash it can
+// in principle collide: it identifies a node, it does not encode a position in
+// the hierarchy. Never persist it as a channel number.
+inline std::int32_t geometry_node_id(G4VTouchable const* touchable) {
+  std::uint64_t h = 1469598103934665603ull;  // FNV-1a offset basis
+  auto mix = [&h](std::uint64_t v) {
+    h ^= v;
+    h *= 1099511628211ull;  // FNV-1a prime
+  };
+  int const depth = touchable->GetHistoryDepth();
+  for (int d = 0; d <= depth; ++d) {
+    mix(static_cast<std::uint64_t>(touchable->GetCopyNumber(d)));
+    mix(static_cast<std::uint64_t>(
+        reinterpret_cast<std::uintptr_t>(touchable->GetVolume(d))));
+  }
+  return static_cast<std::int32_t>((h ^ (h >> 32)) & 0x7fffffff);
+}
+
 inline SimHit make_base_hit(G4Step const* step,
                             DetectorIdMap const& detector_ids) {
   auto* pre = step->GetPreStepPoint();
@@ -42,6 +70,7 @@ inline SimHit make_base_hit(G4Step const* step,
   SimHit hit;
   auto it = detector_ids.find(lv);
   hit.detectorId = it != detector_ids.end() ? it->second : -1;
+  hit.geometryNodeId = geometry_node_id(pre->GetTouchable());
   hit.trackId = step->GetTrack()->GetTrackID();
   hit.pdgCode = step->GetTrack()->GetDefinition()->GetPDGEncoding();
   ship::view::setPosition(hit, aegir::clhep::position(pos));
