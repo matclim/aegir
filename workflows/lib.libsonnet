@@ -43,12 +43,11 @@
       '/SHiP/upstream_tagger/coarse_tile',  // 0 UBT, big tiles
       '/SHiP/decay_volume/sbt/sensors',     // 1 SBT liquid scintillator
       '/SHiP/trackers/straw_gas',           // 2 straw gas, not straw_wall
-      '/SHiP/calorimeter/ecal/',            // 3 ECAL
+      'HPL_FiberCoreLog',                   // 3 ECAL HPL fibre cores
       'TimDetBar',                          // 4 timing detector
       '/SHiP/upstream_tagger/fine_tile',    // 5 UBT, small tiles
-      '/SHiP/calorimeter/hcal/',            // 6 HCAL
-      '/SHiP/calorimeter/wide_pvt',         // 7 calorimeter PVT
-      '/SHiP/calorimeter/thin_ps',          // 8 calorimeter plastic scint
+      '/SHiP/calorimeter/wide_pvt',         // 6 ECAL wide PVT layers
+      '/SHiP/calorimeter/thin_ps',          // 7 ECAL thin PS layers
     ],
   },
 
