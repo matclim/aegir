@@ -87,12 +87,25 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     auto const& sv_names = source_->sensitiveVolumes();
     DetectorIdMap detector_ids;
 
+    std::vector<bool> matched(sv_names.size(), false);
     for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
       for (int i = 0; i < static_cast<int>(sv_names.size()); ++i) {
         if (G4StrUtil::contains(lv->GetName(), std::string_view{sv_names[i]})) {
           detector_ids.emplace(lv, i);
+          matched[i] = true;
           break;
         }
+      }
+    }
+
+    // A pattern matching nothing used to fail silently: the run completed and
+    // simply produced no hits for that detector, which is indistinguishable
+    // from the particles having missed it. Treated as a configuration error,
+    // as unmatched field-magnet patterns already are below.
+    for (std::size_t i = 0; i < sv_names.size(); ++i) {
+      if (!matched[i]) {
+        throw std::runtime_error("Sensitive volume pattern '" + sv_names[i] +
+                                 "' matches no logical volumes");
       }
     }
 
