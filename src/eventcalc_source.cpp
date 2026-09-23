@@ -26,6 +26,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -164,7 +165,6 @@ PHLEX_REGISTER_SOURCE(s, config) {
   // Neutrinos are recorded by EventCalc but invisible to the detector;
   // tracking them costs time and yields nothing.
   auto skip_neutrinos = config.get<bool>("skip_neutrinos", true);
-  // Only meaningful with a custom G4ParticleDefinition for the LLP.
 
   auto offset_x = aegir::get_quantity(config, "offset_x", 0.0 * su::mm);
   auto offset_y = aegir::get_quantity(config, "offset_y", 0.0 * su::mm);

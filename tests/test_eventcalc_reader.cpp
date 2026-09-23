@@ -11,8 +11,10 @@
 // The fixture deliberately covers the cases that have bitten this parser:
 // a summary line whose values are followed by full stops, process names
 // containing the decay arrow, block headers with and without sample_points,
-// CRLF line endings, channels of differing multiplicity, and rows padded with
-// one and with two `0. 0. 0. 0. 0. -999.` groups.
+// CRLF line endings, channels of differing multiplicity, rows padded with one
+// and with two `0. 0. 0. 0. 0. -999.` groups, an anti-proton daughter whose
+// PDG code sits far below the padding sentinel, and a final row that ends
+// mid-group — truncated on purpose, so do not "repair" it.
 
 #include <cstddef>
 #include <iostream>
