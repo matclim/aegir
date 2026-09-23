@@ -239,6 +239,13 @@ add_test(
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/writer_pool.sh
 )
 
+# EventCalc source: the parser test links no Phlex, so this drives the plugin
+# itself — full read, exhaustion error, first_entry offset.
+add_test(
+    NAME eventcalc_source
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/eventcalc_source_check.sh
+)
+
 # EventCalc parser: a fixture covering padded rows, process names containing
 # the decay arrow, CRLF endings and both block-header forms. The parser is
 # standard-library only, so this links no Phlex, ROOT or Geant4.
