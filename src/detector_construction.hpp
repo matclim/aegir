@@ -7,6 +7,8 @@
 //
 // Delegates Construct() to IGeometrySource::construct() and assigns the
 // configured SD type to volumes matching IGeometrySource::sensitiveVolumes().
+// Adds the configured scoring planes to the geometry and instruments them
+// with ScoringPlaneSD (see scoring_planes.hpp).
 
 #pragma once
 
@@ -26,6 +28,7 @@
 #include "FieldService/IFieldSource.h"
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
+#include "scoring_planes.hpp"
 
 namespace SHiP::g4 {
 
@@ -39,23 +42,33 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
   ship::Energy ke_threshold_;  // used by CrossingSD
   std::vector<std::pair<std::string, ship::Length>>
       regions_;  // pattern -> production cut
+  std::vector<ScoringPlaneConfig> scoring_plane_cfgs_;
+  // Filled by Construct() on the geometry thread; read by every worker's
+  // ConstructSDandField(), which only runs after master initialisation.
+  ScoringPlaneMap scoring_planes_;
 
  public:
   ConfigurableDetectorConstruction(
       IGeometrySource const& source, ship::IFieldSource const& field_source,
       SDMode sd_mode = SDMode::scoring,
       ship::Energy ke_threshold = ship::Energy::zero(),
-      std::vector<std::pair<std::string, ship::Length>> regions = {})
+      std::vector<std::pair<std::string, ship::Length>> regions = {},
+      std::vector<ScoringPlaneConfig> scoring_planes = {})
       : source_{&source},
         field_source_{&field_source},
         sd_mode_{sd_mode},
         ke_threshold_{ke_threshold},
-        regions_{std::move(regions)} {}
+        regions_{std::move(regions)},
+        scoring_plane_cfgs_{std::move(scoring_planes)} {}
 
   // Called once, on ship::geometry_thread() (the run manager is initialised
   // there — the process's single Geant4 geometry-creating thread)
   G4VPhysicalVolume* Construct() override {
     auto* world = source_->construct();
+
+    // Scoring planes go in first, while the geometry is still open, so the
+    // region patterns below may also match them.
+    scoring_planes_ = place_scoring_planes(world, scoring_plane_cfgs_);
 
     // Create the configured production-cut regions here, not in
     // ConstructSDandField: G4Region is a split class, so regions must be
@@ -89,6 +102,9 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     DetectorIdMap detector_ids;
 
     for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
+      if (scoring_planes_.contains(lv)) {
+        continue;  // instrumented by ScoringPlaneSD below
+      }
       for (int i = 0; std::cmp_less(i, sv_names.size()); ++i) {
         if (G4StrUtil::contains(lv->GetName(), std::string_view{sv_names[i]})) {
           detector_ids.emplace(lv, i);
@@ -107,6 +123,14 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
 
     for (auto [lv, _] : detector_ids) {
       lv->SetSensitiveDetector(sd);
+    }
+
+    if (!scoring_planes_.empty()) {
+      auto* plane_sd = new ScoringPlaneSD("ScoringPlaneSD", scoring_planes_);
+      G4SDManager::GetSDMpointer()->AddNewDetector(plane_sd);
+      for (auto const& [lv, _] : scoring_planes_) {
+        lv->SetSensitiveDetector(plane_sd);
+      }
     }
 
     // Install per-magnet G4FieldManagers on every logical volume whose name

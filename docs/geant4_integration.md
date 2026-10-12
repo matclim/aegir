@@ -108,6 +108,7 @@ unloading, causing crashes. This is a known Geant4 limitation.
 | `energy_cut_threshold` | double | `ke_threshold` | KE below which tracks are killed (GeV) |
 | `particle_ke_cut` | double | `0.0` | KE below which secondary particles are not recorded (GeV) |
 | `regions` | map | `{}` | Volume name pattern to production cut (mm) mapping |
+| `scoring_planes` | list | `[]` | Scoring planes to add to the geometry, see [Scoring planes](#scoring-planes) |
 | `export_gdml` | string | *(unset)* | Write the constructed geometry to this GDML file after initialisation. Errors if the file exists. Lets external tools (e.g. the GENIE event generator) use exactly the geometry Geant4 tracks in |
 | `progress_interval` | int | `100` | Log a progress line (event count and average rate) every this many simulated events; `0` disables |
 
@@ -139,3 +140,85 @@ Example workflow configuration:
   },
 }
 ```
+
+## Scoring planes
+
+A scoring plane is a thin vacuum (`G4_Galactic`) box or cylindrical shell
+that the geant4 module adds to the geometry the provider built — builtin,
+GDML or GeoModel alike — before Geant4 closes it. It is aegir's counterpart
+of FairShip's `exitHadronAbsorber` and is meant for flux studies: the muons
+leaving the hadron absorber, the neutrinos coming out of the target, and so
+on.
+
+A plane records one `SimHit` for every track that enters it through its
+surface, whatever the particle — neutrinos and other neutrals included — and
+whether or not it deposits energy. It does this through its own sensitive
+detector, so it works the same with `sd_mode: 'scoring'` and
+`sd_mode: 'crossing'`, alongside the geometry's own sensitive volumes. A
+track entering a plane twice (a cylinder crossed in and out, a particle
+scattered back) is recorded each time; set `kill` to stop a track at the
+first plane it reaches.
+
+The hits are told apart from detector hits by their ids:
+
+| `SimHit` field | Scoring-plane value |
+|:---|:---|
+| `detectorId` | `100` (`SHiP::g4::kScoringPlaneDetectorId`), clear of the SHiP subsystem ids and of the `sensitive_volumes` indices |
+| `geometryNodeId` | the plane's `id` |
+| `position`, `momentum`, `time` | at the entry point |
+| `energyDeposit` | `0` |
+| `pathLength` | track length from the track's origin to the end of the step |
+
+Each entry of `scoring_planes` takes:
+
+| Key | Type | Default | Description |
+|:---|:---|:---|:---|
+| `name` | string | — | Volume name; must not already exist in the geometry |
+| `id` | int | position in the list | Written to `SimHit::geometryNodeId`; unique |
+| `shape` | string | `box` | `box` or `tube` (cylindrical shell, axis along z) |
+| `half_x`, `half_y` | double | — | Box half-widths (mm) |
+| `r_min`, `r_max` | double | — | Tube inner and outer radius (mm) |
+| `half_z` | double | — | Half-length along z (mm), both shapes |
+| `position` | [x, y, z] | — | Centre in the global frame (mm) |
+| `mother` | string | world | With `position`: the logical volume to place the plane in |
+| `after_volume` | string | — | Place the plane downstream of this logical volume, inside its mother, centred transversely on its global bounding box |
+| `gap` | double | `0` | With `after_volume`: distance from the volume's downstream end to the plane's upstream face (mm) |
+| `ke_threshold` | double | `0` | Record only tracks entering with at least this kinetic energy (GeV) |
+| `kill` | bool | `false` | Stop and kill every track the plane records |
+
+Exactly one of `position` and `after_volume` must be given. Volume names
+(`mother`, `after_volume`) are exact logical-volume names, and the volume
+must be placed exactly once in the geometry — otherwise the plane would be
+ambiguous or silently duplicated in every copy. Planes are always aligned
+with the global axes, whatever the orientation of their mother. Unknown keys
+and inconsistent settings fail the job at configuration time; a plane that
+overlaps its neighbours (checked with `G4VPhysicalVolume::CheckOverlaps`)
+fails it at initialisation.
+
+```jsonnet
+geant4: lib.geant4 {
+  scoring_planes: [
+    {
+      // FairShip's plane 1 cm behind the hadron absorber
+      name: 'exit_hadron_absorber',
+      id: 1,
+      half_x: 1809.0, half_y: 1699.0, half_z: 1.0,
+      after_volume: '/SHiP/muon_shield/magn_absorb',
+      gap: 10.0,
+      kill: true,
+    },
+    {
+      // cylindrical shell around a target centred at the origin
+      name: 'around_target',
+      id: 2,
+      shape: 'tube',
+      r_min: 80.0, r_max: 81.0, half_z: 500.0,
+      position: [0.0, 0.0, 0.0],
+    },
+  ],
+}
+```
+
+`workflows/gun_st_scoring_planes.jsonnet` places one of each kind in the
+builtin geometry, and `scripts/scoring_planes.sh` (ctest `scoring_planes`)
+checks the recorded hits against the geometry for neutrinos and muons.

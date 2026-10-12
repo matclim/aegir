@@ -56,7 +56,9 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -67,10 +69,12 @@
 #include "geant4_sim_core.hpp"
 #include "geometry_source.hpp"
 #include "math_utils.hpp"
+#include "phlex/configuration.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/model/handle.hpp"
 #include "phlex/module.hpp"
 #include "phlex/utilities/max_allowed_parallelism.hpp"
+#include "scoring_planes.hpp"
 #include "seed_config.hpp"
 #include "units/clhep_bridge.hpp"
 #include "units/config_units.hpp"
@@ -116,6 +120,7 @@ struct Geant4SimConfig {
   ship::Energy energy_cut_threshold = ship::Energy::zero();
   ship::Energy particle_ke_cut = ship::Energy::zero();
   std::vector<std::pair<std::string, ship::Length>> regions;
+  std::vector<ScoringPlaneConfig> scoring_planes;
   // When set, write the constructed geometry to this GDML file after
   // initialisation (e.g. to feed the same geometry to external tools).
   std::string export_gdml;
@@ -352,7 +357,8 @@ class Geant4Sim {
 
     field_ = field;  // keep alive for the G4 run
     detector_ = new ConfigurableDetectorConstruction(
-        *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions);
+        *geo, *field, cfg_.sd_mode, cfg_.ke_threshold, cfg_.regions,
+        cfg_.scoring_planes);
 
     // Master initialisation runs on the process-wide geometry thread: only
     // one thread per process may create Geant4 geometry (G4GeomSplitter's
@@ -481,6 +487,76 @@ class Geant4Sim {
   bool master_constructed_ = false;
 };
 
+// Read the `scoring_planes` list (see scoring_planes.hpp and
+// docs/geant4_integration.md). Lengths are in mm, energies in GeV. Unknown
+// keys are rejected so that a misspelt option (say, `kil`) cannot silently
+// leave a plane with its default behaviour.
+std::vector<ScoringPlaneConfig> read_scoring_planes(
+    phlex::configuration const& config) {
+  namespace su = ship::units;
+  static std::unordered_set<std::string> const known_keys{
+      "name",         "id",    "shape",        "half_x",   "half_y",
+      "r_min",        "r_max", "half_z",       "position", "mother",
+      "after_volume", "gap",   "ke_threshold", "kill"};
+
+  std::vector<ScoringPlaneConfig> planes;
+  auto const entries = config.get_if_present<std::vector<phlex::configuration>>(
+      "scoring_planes");
+  if (!entries) {
+    return planes;
+  }
+  for (std::size_t i = 0; i < entries->size(); ++i) {
+    auto const& entry = (*entries)[i];
+    ScoringPlaneConfig plane{
+        .name = entry.get<std::string>("name", std::string{}),
+        .id = entry.get<int>("id", static_cast<int>(i)),
+    };
+    auto fail = [&plane](std::string const& what) {
+      throw std::invalid_argument("geant4_module: scoring plane '" +
+                                  plane.name + "': " + what);
+    };
+    for (auto const& key : entry.keys()) {
+      if (!known_keys.contains(key)) {
+        fail("unknown key '" + key + "'");
+      }
+    }
+
+    auto const shape = entry.get<std::string>("shape", std::string{"box"});
+    if (shape == "box") {
+      plane.shape = ScoringShape::box;
+    } else if (shape == "tube") {
+      plane.shape = ScoringShape::tube;
+    } else {
+      fail("shape must be 'box' or 'tube', not '" + shape + "'");
+    }
+    auto const no_length = 0.0 * su::mm;
+    plane.half_x = aegir::get_quantity(entry, "half_x", no_length);
+    plane.half_y = aegir::get_quantity(entry, "half_y", no_length);
+    plane.r_min = aegir::get_quantity(entry, "r_min", no_length);
+    plane.r_max = aegir::get_quantity(entry, "r_max", no_length);
+    plane.half_z = aegir::get_quantity(entry, "half_z", no_length);
+    if (auto const pos =
+            entry.get_if_present<std::vector<double>>("position")) {
+      if (pos->size() != 3) {
+        fail("position needs 3 values [x, y, z] (mm)");
+      }
+      plane.position =
+          ship::vecOf<ship::Length>({(*pos)[0], (*pos)[1], (*pos)[2]});
+    }
+    plane.mother = entry.get<std::string>("mother", std::string{});
+    plane.after_volume = entry.get<std::string>("after_volume", std::string{});
+    plane.gap = aegir::get_quantity(entry, "gap", no_length);
+    plane.ke_threshold =
+        aegir::get_quantity(entry, "ke_threshold", 0.0 * su::GeV);
+    plane.kill = entry.get<bool>("kill", false);
+    planes.push_back(std::move(plane));
+  }
+  // Fail at configuration time, before any Geant4 object exists; placement
+  // problems that need the geometry are reported by Construct().
+  validate_scoring_planes(planes);
+  return planes;
+}
+
 }  // namespace
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
@@ -523,6 +599,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
       .particle_ke_cut =
           aegir::get_quantity(config, "particle_ke_cut", 0.0 * su::GeV),
       .regions = std::move(regions),
+      .scoring_planes = read_scoring_planes(config),
       .export_gdml = config.get<std::string>("export_gdml", std::string{}),
       .progress_interval = config.get<int>("progress_interval", 100),
   };

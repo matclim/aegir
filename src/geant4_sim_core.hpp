@@ -32,22 +32,30 @@ inline thread_local std::unordered_map<int, std::size_t> tl_track_map;
 
 using DetectorIdMap = std::unordered_map<G4LogicalVolume*, int>;
 
-inline SimHit make_base_hit(G4Step const* step,
-                            DetectorIdMap const& detector_ids) {
+// Track, particle and pre-step-point kinematics of a hit, under `detector_id`.
+inline SimHit make_base_hit(G4Step const* step, int detector_id) {
   auto const* pre = step->GetPreStepPoint();
   auto const pos = pre->GetPosition();
   auto const mom = pre->GetMomentum();
-  auto* lv = pre->GetTouchable()->GetVolume()->GetLogicalVolume();
 
   SimHit hit;
-  auto const it = detector_ids.find(lv);
-  hit.detectorId = it != detector_ids.end() ? it->second : -1;
+  hit.detectorId = detector_id;
   hit.trackId = step->GetTrack()->GetTrackID();
   hit.pdgCode = step->GetTrack()->GetDefinition()->GetPDGEncoding();
   ship::view::setPosition(hit, aegir::clhep::position(pos));
   ship::view::setMomentum(hit, aegir::clhep::momentum(mom));
   ship::view::setTime(hit, aegir::clhep::time(pre->GetGlobalTime()));
   return hit;
+}
+
+// As above, with the detector id looked up from the step's logical volume
+// (-1 if the volume is not in `detector_ids`).
+inline SimHit make_base_hit(G4Step const* step,
+                            DetectorIdMap const& detector_ids) {
+  auto* lv =
+      step->GetPreStepPoint()->GetTouchable()->GetVolume()->GetLogicalVolume();
+  auto const it = detector_ids.find(lv);
+  return make_base_hit(step, it != detector_ids.end() ? it->second : -1);
 }
 
 class ScoringSD : public G4VSensitiveDetector {
