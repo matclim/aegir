@@ -124,6 +124,25 @@
     regions: { '/SHiP/target': 50, '/SHiP/muon_shield/magn_absorb': 50 },  // production cuts [mm]
   },
 
+  // FairShip's exitHadronAbsorber scoring plane for the GeoModel geometry, as
+  // an entry for the geant4 module's `scoring_planes`: 1 cm behind the
+  // magnetised hadron absorber, in the air gap before the first muon-shield
+  // magnet (absorber end at z = 4350 mm, magn_1 from 4550 mm), covering the
+  // muon-shield container's cross-section (±1810 × ±1700 mm, 1 mm margin).
+  // It records every track reaching it — muons, neutrinos and all others —
+  // and stops it, so nothing is tracked beyond. Merge in a `ke_threshold`
+  // (GeV) to match the run's energy cut.
+  exit_hadron_absorber_plane:: {
+    name: 'exit_hadron_absorber',
+    id: 1,
+    half_x: 1809.0,  // mm
+    half_y: 1699.0,  // mm
+    half_z: 1.0,  // mm
+    after_volume: '/SHiP/muon_shield/magn_absorb',
+    gap: 10.0,  // mm
+    kill: true,
+  },
+
   noop_output:: { cpp: 'sim_output_module', mode: 'noop' },
 
   // The writing modes also accept two optional keys bounding the writer's
