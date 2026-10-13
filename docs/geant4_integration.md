@@ -176,9 +176,9 @@ Each entry of `scoring_planes` takes:
 | `name` | string | — | Volume name; must not already exist in the geometry |
 | `id` | int | position in the list | Written to `SimHit::geometryNodeId`; unique |
 | `shape` | string | `box` | `box` or `tube` (cylindrical shell, axis along z) |
-| `half_x`, `half_y` | double | — | Box half-widths (mm) |
-| `r_min`, `r_max` | double | — | Tube inner and outer radius (mm) |
-| `half_z` | double | — | Half-length along z (mm), both shapes |
+| `half_x`, `half_y` | double | — | Box half-widths (mm); required for a box, rejected for a tube |
+| `r_min`, `r_max` | double | — | Tube inner and outer radius (mm); required for a tube, rejected for a box |
+| `half_z` | double | — | Half-length along z (mm); required for both shapes |
 | `position` | [x, y, z] | — | Centre in the global frame (mm) |
 | `mother` | string | world | With `position`: the logical volume to place the plane in |
 | `after_volume` | string | — | Place the plane downstream of this logical volume, inside its mother, centred transversely on its global bounding box |

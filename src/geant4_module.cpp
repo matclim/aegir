@@ -53,6 +53,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -487,6 +488,53 @@ class Geant4Sim {
   bool master_constructed_ = false;
 };
 
+[[noreturn]] void plane_error(std::string const& plane,
+                              std::string const& what) {
+  throw std::invalid_argument("geant4_module: scoring plane '" + plane +
+                              "': " + what);
+}
+
+// Read a plane's `shape` and its sizes (mm). Each shape's sizes are required
+// and read only for that shape; a size belonging to the other shape is an
+// error rather than silently ignored.
+void read_plane_shape(phlex::configuration const& entry,
+                      ScoringPlaneConfig& plane) {
+  namespace su = ship::units;
+  auto const shape = entry.get<std::string>("shape", std::string{"box"});
+  auto const keys = entry.keys();
+  auto length = [&](char const* key) {
+    auto const value = entry.get_if_present<double>(key);
+    if (!value) {
+      plane_error(plane.name, std::string{"missing '"} + key + "' (mm)");
+    }
+    return *value * su::mm;
+  };
+  auto reject = [&](std::initializer_list<char const*> other_shape_keys) {
+    for (auto const* key : other_shape_keys) {
+      if (std::ranges::find(keys, key) != keys.end()) {
+        plane_error(plane.name, std::string{"'"} + key +
+                                    "' does not apply to shape '" + shape +
+                                    "'");
+      }
+    }
+  };
+  if (shape == "box") {
+    plane.shape = ScoringShape::box;
+    reject({"r_min", "r_max"});
+    plane.half_x = length("half_x");
+    plane.half_y = length("half_y");
+  } else if (shape == "tube") {
+    plane.shape = ScoringShape::tube;
+    reject({"half_x", "half_y"});
+    plane.r_min = length("r_min");
+    plane.r_max = length("r_max");
+  } else {
+    plane_error(plane.name,
+                "shape must be 'box' or 'tube', not '" + shape + "'");
+  }
+  plane.half_z = length("half_z");
+}
+
 // Read the `scoring_planes` list (see scoring_planes.hpp and
 // docs/geant4_integration.md). Lengths are in mm, energies in GeV. Unknown
 // keys are rejected so that a misspelt option (say, `kil`) cannot silently
@@ -511,41 +559,23 @@ std::vector<ScoringPlaneConfig> read_scoring_planes(
         .name = entry.get<std::string>("name", std::string{}),
         .id = entry.get<int>("id", static_cast<int>(i)),
     };
-    auto fail = [&plane](std::string const& what) {
-      throw std::invalid_argument("geant4_module: scoring plane '" +
-                                  plane.name + "': " + what);
-    };
     for (auto const& key : entry.keys()) {
       if (!known_keys.contains(key)) {
-        fail("unknown key '" + key + "'");
+        plane_error(plane.name, "unknown key '" + key + "'");
       }
     }
-
-    auto const shape = entry.get<std::string>("shape", std::string{"box"});
-    if (shape == "box") {
-      plane.shape = ScoringShape::box;
-    } else if (shape == "tube") {
-      plane.shape = ScoringShape::tube;
-    } else {
-      fail("shape must be 'box' or 'tube', not '" + shape + "'");
-    }
-    auto const no_length = 0.0 * su::mm;
-    plane.half_x = aegir::get_quantity(entry, "half_x", no_length);
-    plane.half_y = aegir::get_quantity(entry, "half_y", no_length);
-    plane.r_min = aegir::get_quantity(entry, "r_min", no_length);
-    plane.r_max = aegir::get_quantity(entry, "r_max", no_length);
-    plane.half_z = aegir::get_quantity(entry, "half_z", no_length);
+    read_plane_shape(entry, plane);
     if (auto const pos =
             entry.get_if_present<std::vector<double>>("position")) {
       if (pos->size() != 3) {
-        fail("position needs 3 values [x, y, z] (mm)");
+        plane_error(plane.name, "position needs 3 values [x, y, z] (mm)");
       }
       plane.position =
           ship::vecOf<ship::Length>({(*pos)[0], (*pos)[1], (*pos)[2]});
     }
     plane.mother = entry.get<std::string>("mother", std::string{});
     plane.after_volume = entry.get<std::string>("after_volume", std::string{});
-    plane.gap = aegir::get_quantity(entry, "gap", no_length);
+    plane.gap = aegir::get_quantity(entry, "gap", 0.0 * su::mm);
     plane.ke_threshold =
         aegir::get_quantity(entry, "ke_threshold", 0.0 * su::GeV);
     plane.kill = entry.get<bool>("kill", false);
