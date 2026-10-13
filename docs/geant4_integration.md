@@ -181,6 +181,12 @@ The hits are told apart from detector hits by their ids:
 | `energyDeposit` | `0` |
 | `pathLength` | track length from the track's origin to the end of the step |
 
+In the output module's validation histograms, plane hits fill their own
+`h_plane_hit_*` histograms (hits per event, plane id, momentum, PDG code) and
+are left out of the `h_hit_*` ones, which keep describing the detector's
+hits: with detector id 100 and no energy deposit, plane hits would otherwise
+land in the overflow of `h_hit_detector` and pile up at zero in `h_hit_edep`.
+
 Each entry of `scoring_planes` takes:
 
 | Key | Type | Default | Description |

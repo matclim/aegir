@@ -29,6 +29,7 @@
 #include <SHiP/SimParticle.hpp>
 #include <SHiP/SimResult.hpp>
 #include <algorithm>
+#include <cstddef>
 #include <exception>
 #include <memory>
 #include <optional>
@@ -41,6 +42,7 @@
 #include "math_utils.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
+#include "scoring_plane_id.hpp"
 
 namespace {
 
@@ -313,7 +315,9 @@ class MCHistogrammer {
 };
 
 // Validation histograms for full simulation (thread-safe via per-thread
-// RHistFillContext atomic fillers)
+// RHistFillContext atomic fillers). Scoring-plane hits fill their own
+// h_plane_hit_* histograms and are left out of the h_hit_* ones, which describe
+// the detector's hits: plane hits carry detector id 100 and no energy deposit.
 class SimHistogrammer {
  public:
   explicit SimHistogrammer(std::string filename)
@@ -325,6 +329,10 @@ class SimHistogrammer {
         h_hit_z_{make_hist(200, -1000., 12000.)},
         h_hit_detector_{make_hist(100, -0.5, 99.5)},
         h_hit_momentum_{make_hist(200, 0., 500.)},
+        h_plane_hit_multiplicity_{make_hist(1000, -0.5, 999.5)},
+        h_plane_hit_id_{make_hist(100, -0.5, 99.5)},
+        h_plane_hit_momentum_{make_hist(200, 0., 500.)},
+        h_plane_hit_pdg_{make_hist(5000, -2500.5, 2499.5)},
         h_particle_multiplicity_{make_hist(1000, -0.5, 999.5)},
         f_mc_multiplicity_{h_mc_multiplicity_},
         f_mc_momentum_{h_mc_momentum_},
@@ -333,6 +341,10 @@ class SimHistogrammer {
         f_hit_z_{h_hit_z_},
         f_hit_detector_{h_hit_detector_},
         f_hit_momentum_{h_hit_momentum_},
+        f_plane_hit_multiplicity_{h_plane_hit_multiplicity_},
+        f_plane_hit_id_{h_plane_hit_id_},
+        f_plane_hit_momentum_{h_plane_hit_momentum_},
+        f_plane_hit_pdg_{h_plane_hit_pdg_},
         f_particle_multiplicity_{h_particle_multiplicity_} {}
 
   void observe(std::vector<SHiP::MCParticle> const& particles,
@@ -346,6 +358,11 @@ class SimHistogrammer {
       ctxs.hit_z = f_hit_z_.CreateFillContext();
       ctxs.hit_detector = f_hit_detector_.CreateFillContext();
       ctxs.hit_momentum = f_hit_momentum_.CreateFillContext();
+      ctxs.plane_hit_multiplicity =
+          f_plane_hit_multiplicity_.CreateFillContext();
+      ctxs.plane_hit_id = f_plane_hit_id_.CreateFillContext();
+      ctxs.plane_hit_momentum = f_plane_hit_momentum_.CreateFillContext();
+      ctxs.plane_hit_pdg = f_plane_hit_pdg_.CreateFillContext();
       ctxs.particle_multiplicity = f_particle_multiplicity_.CreateFillContext();
     }
     ctxs.mc_multiplicity->Fill(static_cast<double>(particles.size()));
@@ -353,13 +370,23 @@ class SimHistogrammer {
       double const pmag = aegir::magnitude(p.momentum);
       ctxs.mc_momentum->Fill(pmag);
     }
-    ctxs.hit_multiplicity->Fill(static_cast<double>(result.hits.size()));
+    std::size_t plane_hits = 0;
     for (auto const& hit : result.hits) {
+      if (hit.detectorId == SHiP::g4::kScoringPlaneDetectorId) {
+        ++plane_hits;
+        ctxs.plane_hit_id->Fill(static_cast<double>(hit.geometryNodeId));
+        ctxs.plane_hit_momentum->Fill(aegir::magnitude(hit.momentum));
+        ctxs.plane_hit_pdg->Fill(static_cast<double>(hit.pdgCode));
+        continue;
+      }
       ctxs.hit_edep->Fill(hit.energyDeposit);
       ctxs.hit_z->Fill(hit.position[2]);
       ctxs.hit_detector->Fill(static_cast<double>(hit.detectorId));
       ctxs.hit_momentum->Fill(aegir::magnitude(hit.momentum));
     }
+    ctxs.hit_multiplicity->Fill(
+        static_cast<double>(result.hits.size() - plane_hits));
+    ctxs.plane_hit_multiplicity->Fill(static_cast<double>(plane_hits));
     ctxs.particle_multiplicity->Fill(
         static_cast<double>(result.particles.size()));
   }
@@ -378,7 +405,8 @@ class SimHistogrammer {
           *h_mc_multiplicity_);
       put("h_mc_momentum", "MC particle |p|;|p| [GeV/c];Entries",
           *h_mc_momentum_);
-      put("h_hit_multiplicity", "Sim hits per event;N;Events",
+      put("h_hit_multiplicity",
+          "Sim hits per event (without scoring planes);N;Events",
           *h_hit_multiplicity_);
       put("h_hit_edep", "Hit energy deposit;E_{dep} [GeV];Entries",
           *h_hit_edep_);
@@ -386,6 +414,14 @@ class SimHistogrammer {
       put("h_hit_detector", "Hit detector ID;Detector ID;Entries",
           *h_hit_detector_);
       put("h_hit_momentum", "Hit |p|;|p| [GeV/c];Entries", *h_hit_momentum_);
+      put("h_plane_hit_multiplicity", "Scoring-plane hits per event;N;Events",
+          *h_plane_hit_multiplicity_);
+      put("h_plane_hit_id", "Scoring-plane hit plane id;Plane id;Entries",
+          *h_plane_hit_id_);
+      put("h_plane_hit_momentum", "Scoring-plane hit |p|;|p| [GeV/c];Entries",
+          *h_plane_hit_momentum_);
+      put("h_plane_hit_pdg", "Scoring-plane hit PDG code;PDG;Entries",
+          *h_plane_hit_pdg_);
       put("h_particle_multiplicity", "Sim particles per event;N;Events",
           *h_particle_multiplicity_);
     } catch (std::exception const& e) {
@@ -408,6 +444,10 @@ class SimHistogrammer {
     std::shared_ptr<ContextD> hit_z;
     std::shared_ptr<ContextD> hit_detector;
     std::shared_ptr<ContextD> hit_momentum;
+    std::shared_ptr<ContextD> plane_hit_multiplicity;
+    std::shared_ptr<ContextD> plane_hit_id;
+    std::shared_ptr<ContextD> plane_hit_momentum;
+    std::shared_ptr<ContextD> plane_hit_pdg;
     std::shared_ptr<ContextD> particle_multiplicity;
   };
 
@@ -415,10 +455,14 @@ class SimHistogrammer {
   std::shared_ptr<HistD> h_mc_multiplicity_, h_mc_momentum_;
   std::shared_ptr<HistD> h_hit_multiplicity_, h_hit_edep_, h_hit_z_,
       h_hit_detector_, h_hit_momentum_;
+  std::shared_ptr<HistD> h_plane_hit_multiplicity_, h_plane_hit_id_,
+      h_plane_hit_momentum_, h_plane_hit_pdg_;
   std::shared_ptr<HistD> h_particle_multiplicity_;
   FillerD f_mc_multiplicity_, f_mc_momentum_;
   FillerD f_hit_multiplicity_, f_hit_edep_, f_hit_z_, f_hit_detector_,
       f_hit_momentum_;
+  FillerD f_plane_hit_multiplicity_, f_plane_hit_id_, f_plane_hit_momentum_,
+      f_plane_hit_pdg_;
   FillerD f_particle_multiplicity_;
   tbb::enumerable_thread_specific<FillContexts> fill_contexts_;
 };

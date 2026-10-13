@@ -59,16 +59,10 @@
 #include <vector>
 
 #include "geant4_sim_core.hpp"
+#include "scoring_plane_id.hpp"
 #include "units/clhep_bridge.hpp"
 
 namespace SHiP::g4 {
-
-/// SimHit::detectorId of every scoring-plane hit. Kept clear of the SHiP
-/// subsystem ids (SHiP::detector_id, 0–4) and of the sensitive-volume indices
-/// the geometry's own sensitive detectors write, so a plane hit cannot be
-/// mistaken for a detector hit. Which plane recorded the hit is stored in
-/// SimHit::geometryNodeId (the plane's configured `id`).
-inline constexpr std::int32_t kScoringPlaneDetectorId = 100;
 
 /// Name of the parallel world holding the scoring planes, and of the
 /// G4ParallelWorldPhysics constructor that makes Geant4 track through it.
