@@ -143,21 +143,33 @@ Example workflow configuration:
 
 ## Scoring planes
 
-A scoring plane is a thin vacuum (`G4_Galactic`) box or cylindrical shell
-that the geant4 module adds to the geometry the provider built — builtin,
-GDML or GeoModel alike — before Geant4 closes it. It is aegir's counterpart
-of FairShip's `exitHadronAbsorber` and is meant for flux studies: the muons
-leaving the hadron absorber, the neutrinos coming out of the target, and so
-on.
+A scoring plane is a thin box or cylindrical shell that records the
+particles crossing it. It is aegir's counterpart of FairShip's
+`exitHadronAbsorber` and is meant for flux studies: the muons leaving the
+hadron absorber, the neutrinos coming out of the target, and so on.
+
+The planes live in a Geant4 *parallel world* (`aegir_scoring_planes`),
+overlaid on whatever geometry the provider built — builtin, GDML or GeoModel
+alike. Geant4 tracks every particle through both worlds at once
+(`G4ParallelWorldPhysics`, added to the physics list whenever planes are
+configured). A plane can therefore be any size, anywhere: it can cut through
+or extend beyond the detector's volumes — a muon-shield container, a magnet,
+the target — without changing their navigation or their materials, since the
+parallel world carries no material of its own. Planes must not overlap one
+another or extend beyond the world volume.
 
 A plane records one `SimHit` for every track that enters it through its
 surface, whatever the particle — neutrinos and other neutrals included — and
 whether or not it deposits energy. It does this through its own sensitive
 detector, so it works the same with `sd_mode: 'scoring'` and
-`sd_mode: 'crossing'`, alongside the geometry's own sensitive volumes. A
-track entering a plane twice (a cylinder crossed in and out, a particle
-scattered back) is recorded each time; set `kill` to stop a track at the
-first plane it reaches.
+`sd_mode: 'crossing'`, alongside the geometry's own sensitive volumes, and
+the `sensitive_volumes` and field `volume_pattern` patterns never match the
+planes. A track entering a plane twice (a cylinder crossed in and out, a
+particle scattered back) is recorded each time; set `kill` to stop a track at
+the first plane it reaches.
+
+Tracking through a parallel world uses Geant4's coupled transportation and
+costs some CPU time per step, so only configure the planes a run needs.
 
 The hits are told apart from detector hits by their ids:
 
@@ -180,20 +192,18 @@ Each entry of `scoring_planes` takes:
 | `r_min`, `r_max` | double | — | Tube inner and outer radius (mm); required for a tube, rejected for a box |
 | `half_z` | double | — | Half-length along z (mm); required for both shapes |
 | `position` | [x, y, z] | — | Centre in the global frame (mm) |
-| `mother` | string | world | With `position`: the logical volume to place the plane in |
-| `after_volume` | string | — | Place the plane downstream of this logical volume, inside its mother, centred transversely on its global bounding box |
+| `after_volume` | string | — | Place the plane downstream of this detector volume, centred transversely on its global bounding box |
 | `gap` | double | `0` | With `after_volume`: distance from the volume's downstream end to the plane's upstream face (mm) |
 | `ke_threshold` | double | `0` | Record only tracks entering with at least this kinetic energy (GeV) |
 | `kill` | bool | `false` | Stop and kill every track the plane records |
 
-Exactly one of `position` and `after_volume` must be given. Volume names
-(`mother`, `after_volume`) are exact logical-volume names, and the volume
-must be placed exactly once in the geometry — otherwise the plane would be
-ambiguous or silently duplicated in every copy. Planes are always aligned
-with the global axes, whatever the orientation of their mother. Unknown keys
-and inconsistent settings fail the job at configuration time; a plane that
-overlaps its neighbours (checked with `G4VPhysicalVolume::CheckOverlaps`)
-fails it at initialisation.
+Exactly one of `position` and `after_volume` must be given. `after_volume`
+is an exact logical-volume name, and the volume must be placed exactly once
+in the geometry — otherwise the plane's position would be ambiguous. Planes
+are always aligned with the global axes. Unknown keys and inconsistent
+settings fail the job at configuration time; a plane that overlaps another
+plane or extends beyond the world (checked with
+`G4VPhysicalVolume::CheckOverlaps`) fails it at initialisation.
 
 ```jsonnet
 geant4: lib.geant4 {
@@ -202,7 +212,7 @@ geant4: lib.geant4 {
       // FairShip's plane 1 cm behind the hadron absorber
       name: 'exit_hadron_absorber',
       id: 1,
-      half_x: 1809.0, half_y: 1699.0, half_z: 1.0,
+      half_x: 3559.0, half_y: 1699.0, half_z: 1.0,
       after_volume: '/SHiP/muon_shield/magn_absorb',
       gap: 10.0,
       kill: true,
@@ -219,6 +229,7 @@ geant4: lib.geant4 {
 }
 ```
 
-`workflows/gun_st_scoring_planes.jsonnet` places one of each kind in the
-builtin geometry, and `scripts/scoring_planes.sh` (ctest `scoring_planes`)
-checks the recorded hits against the geometry for neutrinos and muons.
+`workflows/gun_st_scoring_planes.jsonnet` places planes of each kind in the
+builtin geometry, one of them cutting through the tungsten target, and
+`scripts/scoring_planes.sh` (ctest `scoring_planes`) checks the recorded hits
+against the geometry for neutrinos and muons.

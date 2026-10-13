@@ -7,8 +7,8 @@
 //
 // Delegates Construct() to IGeometrySource::construct() and assigns the
 // configured SD type to volumes matching IGeometrySource::sensitiveVolumes().
-// Adds the configured scoring planes to the geometry and instruments them
-// with ScoringPlaneSD (see scoring_planes.hpp).
+// Registers the configured scoring planes as a parallel world
+// (ScoringParallelWorld, see scoring_planes.hpp).
 
 #pragma once
 
@@ -42,21 +42,22 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
   ship::Energy ke_threshold_;  // used by CrossingSD
   std::vector<std::pair<std::string, ship::Length>>
       regions_;  // pattern -> production cut
-  std::vector<ScoringPlaneConfig> scoring_plane_cfgs_;
-  // Filled by Construct() on the geometry thread; read by every worker's
-  // ConstructSDandField(), which only runs after master initialisation.
-  ScoringPlaneMap scoring_planes_;
+  // The scoring planes' parallel world, or null without planes. Owned by
+  // G4VUserDetectorConstruction once registered (leaked with it, like the
+  // rest of the Geant4 setup).
+  ScoringParallelWorld* scoring_world_ = nullptr;
 
-  // Give every placed scoring plane this worker's ScoringPlaneSD.
-  void attach_scoring_plane_sd() const {
-    if (scoring_planes_.empty()) {
-      return;
+  // The detector geometry's logical volumes: the volume store without the
+  // scoring planes' parallel world, which the sensitive-volume and field
+  // patterns must not match.
+  [[nodiscard]] std::vector<G4LogicalVolume*> detector_volumes() const {
+    std::vector<G4LogicalVolume*> volumes;
+    for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
+      if (scoring_world_ == nullptr || !scoring_world_->contains(lv)) {
+        volumes.push_back(lv);
+      }
     }
-    auto* plane_sd = new ScoringPlaneSD("ScoringPlaneSD", scoring_planes_);
-    G4SDManager::GetSDMpointer()->AddNewDetector(plane_sd);
-    for (auto const& [lv, _] : scoring_planes_) {
-      lv->SetSensitiveDetector(plane_sd);
-    }
+    return volumes;
   }
 
  public:
@@ -70,17 +71,23 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
         field_source_{&field_source},
         sd_mode_{sd_mode},
         ke_threshold_{ke_threshold},
-        regions_{std::move(regions)},
-        scoring_plane_cfgs_{std::move(scoring_planes)} {}
+        regions_{std::move(regions)} {
+    if (!scoring_planes.empty()) {
+      scoring_world_ = new ScoringParallelWorld(std::move(scoring_planes));
+      RegisterParallelWorld(scoring_world_);
+    }
+  }
+
+  /// Whether scoring planes are configured, i.e. the run needs
+  /// G4ParallelWorldPhysics(kScoringWorldName).
+  [[nodiscard]] bool has_scoring_planes() const {
+    return scoring_world_ != nullptr;
+  }
 
   // Called once, on ship::geometry_thread() (the run manager is initialised
   // there — the process's single Geant4 geometry-creating thread)
   G4VPhysicalVolume* Construct() override {
     auto* world = source_->construct();
-
-    // Scoring planes go in first, while the geometry is still open, so the
-    // region patterns below may also match them.
-    scoring_planes_ = place_scoring_planes(world, scoring_plane_cfgs_);
 
     // Create the configured production-cut regions here, not in
     // ConstructSDandField: G4Region is a split class, so regions must be
@@ -113,10 +120,8 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     auto const& sv_names = source_->sensitiveVolumes();
     DetectorIdMap detector_ids;
 
-    for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
-      if (scoring_planes_.contains(lv)) {
-        continue;  // instrumented by ScoringPlaneSD below
-      }
+    auto const volumes = detector_volumes();
+    for (auto* lv : volumes) {
       for (int i = 0; std::cmp_less(i, sv_names.size()); ++i) {
         if (G4StrUtil::contains(lv->GetName(), std::string_view{sv_names[i]})) {
           detector_ids.emplace(lv, i);
@@ -137,8 +142,6 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
       lv->SetSensitiveDetector(sd);
     }
 
-    attach_scoring_plane_sd();
-
     // Install per-magnet G4FieldManagers on every logical volume whose name
     // contains the configured pattern. Outside these volumes Geant4 never
     // invokes the field, so drift regions stay cost-free. An unmatched
@@ -148,7 +151,7 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
       auto* adapter = new ship::G4MagFieldAdapter(fr.field);
       auto* fmgr = new G4FieldManager(adapter);
       bool matched = false;
-      for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
+      for (auto* lv : volumes) {
         if (G4StrUtil::contains(lv->GetName(),
                                 std::string_view{fr.volume_pattern})) {
           lv->SetFieldManager(fmgr, /*forceToAllDaughters=*/true);

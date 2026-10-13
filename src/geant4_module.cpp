@@ -26,6 +26,7 @@
 #include <G4GeometryManager.hh>
 #include <G4LogicalVolumeStore.hh>
 #include <G4MTRunManager.hh>
+#include <G4ParallelWorldPhysics.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
 #include <G4PhysListFactory.hh>
@@ -33,6 +34,7 @@
 #include <G4PrimaryParticle.hh>
 #include <G4PrimaryVertex.hh>
 #include <G4RegionStore.hh>
+#include <G4RunManagerKernel.hh>
 #include <G4SolidStore.hh>
 #include <G4StateManager.hh>
 #include <G4Threading.hh>
@@ -381,6 +383,14 @@ class Geant4Sim {
       // abort.
       G4PhysListFactory factory;
       auto* physics = factory.GetReferencePhysList(cfg_.physics_list);
+      // Transport particles through the scoring planes' parallel world too.
+      // Not a layered-mass world: the planes take on no material, the
+      // detector geometry's material applies everywhere.
+      if (detector_->has_scoring_planes()) {
+        physics->RegisterPhysics(
+            new G4ParallelWorldPhysics(kScoringWorldName,
+                                       /*layeredMass=*/false));
+      }
       rm->SetUserInitialization(physics);
 
       rm->SetUserInitialization(new DirectActionInit());
@@ -435,13 +445,23 @@ class Geant4Sim {
     G4WorkerThread::BuildGeometryAndPhysicsVector();
 
     tl_kernel = new G4WorkerRunManagerKernel();
+    // Also registers the master's parallel worlds (the scoring planes) with
+    // this thread's transportation manager, before the physics list's
+    // G4ParallelWorldProcess looks them up.
     tl_kernel->WorkerDefineWorldVolume(world_pv_);
+    // As G4WorkerRunManager::InitializeGeometry does: with parallel worlds,
+    // InitializePhysics must build the same coupled transportation as the
+    // master's.
+    tl_kernel->SetNumberOfParallelWorld(
+        G4MTRunManager::GetMasterRunManagerKernel()
+            ->GetNumberOfParallelWorld());
 
     physics_list_->InitializeWorker();
     tl_kernel->SetPhysics(physics_list_);
     tl_kernel->InitializePhysics();
 
     detector_->ConstructSDandField();
+    detector_->ConstructParallelSD();
 
     auto* evt_mgr = tl_kernel->GetEventManager();
     evt_mgr->SetUserAction(new TrackingAction(cfg_.particle_ke_cut));
@@ -543,9 +563,9 @@ std::vector<ScoringPlaneConfig> read_scoring_planes(
     phlex::configuration const& config) {
   namespace su = ship::units;
   static std::unordered_set<std::string> const known_keys{
-      "name",         "id",    "shape",        "half_x",   "half_y",
-      "r_min",        "r_max", "half_z",       "position", "mother",
-      "after_volume", "gap",   "ke_threshold", "kill"};
+      "name",  "id",           "shape",  "half_x",   "half_y",
+      "r_min", "r_max",        "half_z", "position", "after_volume",
+      "gap",   "ke_threshold", "kill"};
 
   std::vector<ScoringPlaneConfig> planes;
   auto const entries = config.get_if_present<std::vector<phlex::configuration>>(
@@ -573,7 +593,6 @@ std::vector<ScoringPlaneConfig> read_scoring_planes(
       plane.position =
           ship::vecOf<ship::Length>({(*pos)[0], (*pos)[1], (*pos)[2]});
     }
-    plane.mother = entry.get<std::string>("mother", std::string{});
     plane.after_volume = entry.get<std::string>("after_volume", std::string{});
     plane.gap = aegir::get_quantity(entry, "gap", 0.0 * su::mm);
     plane.ke_threshold =

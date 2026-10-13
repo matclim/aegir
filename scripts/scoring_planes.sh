@@ -6,9 +6,10 @@
 # Scoring planes: run gun_st_scoring_planes with neutrinos and with muons and
 # check that every plane records exactly the tracks the geometry says cross
 # it, at its entry face, with the scoring-plane detector id; that neutrinos
-# are recorded although they deposit nothing; and that the killing plane
-# stops what it records. Then check that bad plane configurations fail with a
-# clear error instead of running.
+# are recorded although they deposit nothing; that a plane cutting through the
+# target records like any other (the planes live in a parallel world); and
+# that the killing plane stops what it records. Then check that bad plane
+# configurations fail with a clear error instead of running.
 # Relies on PHLEX_PLUGIN_PATH being set (activate.sh does this under `pixi run`).
 set -euo pipefail
 
@@ -29,21 +30,23 @@ SCORING_PLANE = 100  # SHiP::g4::kScoringPlaneDetectorId
 TOL = 1e-3  # mm
 # Plane 1: upstream face 10 mm behind the target's end at z = 500 mm.
 # Plane 2: tube r = 80-81 mm, |z| <= 500 mm. Plane 3: upstream face at 2999 mm.
+# Plane 4: |x|, |y| <= 40 mm, upstream face at z = 249 mm, inside the tungsten.
 Z1, R2, Z3 = 510.0, 80.0, 2999.0
+Z4, HALF4 = 249.0, 40.0
 theta_tube = math.atan2(R2, 500.0)  # below: leaves through the tube's end
 
 reader = ROOT.RNTupleReader.Open("events", path)
 hits_view = reader.GetView["std::vector<SHiP::SimHit>"]("sim_hits")
 parts_view = reader.GetView["std::vector<SHiP::SimParticle>"]("sim_particles")
 errors = []
-counts = {1: 0, 2: 0, 3: 0}
+counts = {1: 0, 2: 0, 3: 0, 4: 0}
 
 n = reader.GetNEntries()
 for i in range(n):
     primary = next(p for p in parts_view(i) if p.trackId == 1)
     px, py, pz = primary.momentum
     theta = math.atan2(math.hypot(px, py), pz)
-    planes = {1: [], 2: [], 3: []}
+    planes = {1: [], 2: [], 3: [], 4: []}
     detector = []
     for h in hits_view(i):
         if h.detectorId != SCORING_PLANE:
@@ -80,6 +83,15 @@ for i in range(n):
         for h in planes[2]:
             r = math.hypot(h.position[0], h.position[1])
             expect(abs(r - R2) < TOL, f"tube hit at r={r}")
+        # Plane 4 is crossed when the straight line is inside its square at
+        # its upstream face; skip lines grazing an edge.
+        x4, y4 = Z4 * px / pz, Z4 * py / pz
+        edge = HALF4 - max(abs(x4), abs(y4))
+        if abs(edge) > 0.5:
+            want = 1 if edge > 0 else 0
+            expect(len(planes[4]) == want, f"{len(planes[4])} hits on plane 4")
+        for h in planes[4]:
+            expect(abs(h.position[2] - Z4) < TOL, f"plane 4 hit at z={h.position[2]}")
     else:
         # Charged: the silicon at z = 2 m still records it, the killing
         # plane at 3 m stops it before any later silicon plane.
@@ -90,7 +102,7 @@ for i in range(n):
 for e in errors[:20]:
     print(e)
 print(f"{n} events, plane hits {counts}, {len(errors)} problem(s)")
-ok = n > 0 and not errors and counts[2] > 0
+ok = n > 0 and not errors and counts[2] > 0 and counts[4] > 0
 sys.stdout.flush()
 os._exit(0 if ok else 1)  # dodge a PyROOT RNTuple teardown crash
 EOF
@@ -118,8 +130,11 @@ EOF
   echo "$name: fails as expected"
 }
 
-expect_failure overlap "overlaps the volumes around it" \
-  "[{ name: 'p', half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 500] }]"
+expect_failure overlapping_planes "overlaps another scoring plane" \
+  "[{ name: 'a', half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1500] },
+    { name: 'b', half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1502] }]"
+expect_failure beyond_world "extends beyond the world" \
+  "[{ name: 'p', half_x: 6000, half_y: 100, half_z: 1, position: [0, 0, 1500] }]"
 expect_failure unknown_key "unknown key 'kil'" \
   "[{ name: 'p', half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1500], kil: true }]"
 expect_failure missing_volume "must be placed exactly once" \

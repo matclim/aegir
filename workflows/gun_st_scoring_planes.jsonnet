@@ -1,10 +1,13 @@
 // Scoring-plane smoke on the builtin geometry (1 m tungsten target centred at
 // the origin, silicon planes at z = 2, 4, ..., 10 m). A gun at the origin,
-// inside the target, fires into a 0.5 rad cone; three scoring planes surround
-// it:
+// inside the target, fires into a 0.5 rad cone; four scoring planes are laid
+// over it in their parallel world:
 //   1  box 1 cm behind the target (placed with after_volume),
 //   2  cylindrical shell r = 80-81 mm around the target (placed by position),
-//   3  box at z = 3 m that kills what it records.
+//   3  box at z = 3 m that kills what it records,
+//   4  small box cutting through the tungsten at z = 250 mm, which only a
+//      parallel world allows.
+// The sizes only need to produce these cases; they stand for no real setup.
 // With the default neutrino gun nothing deposits energy, so every hit comes
 // from the planes; scripts/scoring_planes.sh checks them geometrically.
 // Pass --tla-code pdg=13 for muons (which also hit the silicon at z = 2 m,
@@ -55,6 +58,14 @@ function(pdg=14, events=200) {
           half_z: 1.0,
           position: [0.0, 0.0, 3000.0],
           kill: true,
+        },
+        {
+          name: 'plane_in_target',
+          id: 4,
+          half_x: 40.0,
+          half_y: 40.0,
+          half_z: 1.0,
+          position: [0.0, 0.0, 250.0],
         },
       ],
     },
