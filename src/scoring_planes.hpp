@@ -60,7 +60,7 @@ namespace SHiP::g4 {
 /// SimHit::geometryNodeId (the plane's configured `id`).
 inline constexpr std::int32_t kScoringPlaneDetectorId = 100;
 
-enum class ScoringShape { box, tube };
+enum class ScoringShape : std::uint8_t { box, tube };
 
 /// One scoring plane, as configured in the geant4 module's `scoring_planes`.
 /// Both shapes are aligned with the global axes; a tube's axis is along z.
@@ -80,9 +80,9 @@ struct ScoringPlaneConfig {
   //    inside that volume's mother. The plane is centred transversely on the
   //    volume's global bounding box and its upstream face sits `gap` behind
   //    the box's downstream end — FairShip's "1 cm after the absorber".
-  std::optional<ship::Vec3<ship::Length>> position{};
-  std::string mother{};
-  std::string after_volume{};
+  std::optional<ship::Vec3<ship::Length>> position;
+  std::string mother;
+  std::string after_volume;
   ship::Length gap = ship::Length::zero();
   /// Record only tracks entering with at least this kinetic energy.
   ship::Energy ke_threshold = ship::Energy::zero();
@@ -99,6 +99,52 @@ struct ScoringPlaneInfo {
 
 using ScoringPlaneMap = std::unordered_map<G4LogicalVolume*, ScoringPlaneInfo>;
 
+namespace scoring_plane_detail {
+
+/// What is wrong with a plane's shape and size, or an empty string.
+inline std::string shape_error(ScoringPlaneConfig const& p) {
+  auto const zero = ship::Length::zero();
+  if (!(p.half_z > zero)) {
+    return "half_z must be positive";
+  }
+  if (p.shape == ScoringShape::box) {
+    if (!(p.half_x > zero) || !(p.half_y > zero)) {
+      return "a box needs positive half_x and half_y";
+    }
+    if (p.r_min != zero || p.r_max != zero) {
+      return "r_min/r_max apply to tubes only";
+    }
+    return {};
+  }
+  if (!(p.r_min >= zero) || !(p.r_max > p.r_min)) {
+    return "a tube needs 0 <= r_min < r_max";
+  }
+  if (p.half_x != zero || p.half_y != zero) {
+    return "half_x/half_y apply to boxes only";
+  }
+  return {};
+}
+
+/// What is wrong with a plane's placement settings, or an empty string.
+inline std::string placement_error(ScoringPlaneConfig const& p) {
+  auto const zero = ship::Length::zero();
+  if (p.position.has_value() == !p.after_volume.empty()) {
+    return "set exactly one of 'position' and 'after_volume'";
+  }
+  if (!p.after_volume.empty() && !p.mother.empty()) {
+    return "'mother' applies to 'position' placement only";
+  }
+  if (p.after_volume.empty() && p.gap != zero) {
+    return "'gap' applies to 'after_volume' placement only";
+  }
+  if (p.gap < zero) {
+    return "gap must not be negative";
+  }
+  return {};
+}
+
+}  // namespace scoring_plane_detail
+
 /// Check a set of plane configurations for consistency on their own (no
 /// geometry needed); throws std::invalid_argument naming the offending plane.
 inline void validate_scoring_planes(
@@ -106,51 +152,21 @@ inline void validate_scoring_planes(
   std::unordered_set<std::string> names;
   std::unordered_set<std::int32_t> ids;
   for (auto const& p : planes) {
-    auto fail = [&p](std::string const& what) {
-      throw std::invalid_argument("scoring plane '" + p.name + "': " + what);
-    };
     if (p.name.empty()) {
       throw std::invalid_argument("scoring plane without a name");
     }
+    std::string error;
     if (!names.insert(p.name).second) {
-      fail("name used by more than one plane");
+      error = "name used by more than one plane";
+    } else if (!ids.insert(p.id).second) {
+      error = "id " + std::to_string(p.id) + " used by more than one plane";
+    } else if (p.ke_threshold < ship::Energy::zero()) {
+      error = "ke_threshold must not be negative";
+    } else if (error = scoring_plane_detail::shape_error(p); error.empty()) {
+      error = scoring_plane_detail::placement_error(p);
     }
-    if (!ids.insert(p.id).second) {
-      fail("id " + std::to_string(p.id) + " used by more than one plane");
-    }
-    auto const zero = ship::Length::zero();
-    if (!(p.half_z > zero)) {
-      fail("half_z must be positive");
-    }
-    if (p.shape == ScoringShape::box) {
-      if (!(p.half_x > zero) || !(p.half_y > zero)) {
-        fail("a box needs positive half_x and half_y");
-      }
-      if (p.r_min != zero || p.r_max != zero) {
-        fail("r_min/r_max apply to tubes only");
-      }
-    } else {
-      if (!(p.r_min >= zero) || !(p.r_max > p.r_min)) {
-        fail("a tube needs 0 <= r_min < r_max");
-      }
-      if (p.half_x != zero || p.half_y != zero) {
-        fail("half_x/half_y apply to boxes only");
-      }
-    }
-    if (p.position.has_value() == !p.after_volume.empty()) {
-      fail("set exactly one of 'position' and 'after_volume'");
-    }
-    if (!p.after_volume.empty() && !p.mother.empty()) {
-      fail("'mother' applies to 'position' placement only");
-    }
-    if (p.after_volume.empty() && p.gap != zero) {
-      fail("'gap' applies to 'after_volume' placement only");
-    }
-    if (p.gap < zero) {
-      fail("gap must not be negative");
-    }
-    if (p.ke_threshold < ship::Energy::zero()) {
-      fail("ke_threshold must not be negative");
+    if (!error.empty()) {
+      throw std::invalid_argument("scoring plane '" + p.name + "': " + error);
     }
   }
 }

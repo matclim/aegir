@@ -47,6 +47,18 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
   // ConstructSDandField(), which only runs after master initialisation.
   ScoringPlaneMap scoring_planes_;
 
+  // Give every placed scoring plane this worker's ScoringPlaneSD.
+  void attach_scoring_plane_sd() const {
+    if (scoring_planes_.empty()) {
+      return;
+    }
+    auto* plane_sd = new ScoringPlaneSD("ScoringPlaneSD", scoring_planes_);
+    G4SDManager::GetSDMpointer()->AddNewDetector(plane_sd);
+    for (auto const& [lv, _] : scoring_planes_) {
+      lv->SetSensitiveDetector(plane_sd);
+    }
+  }
+
  public:
   ConfigurableDetectorConstruction(
       IGeometrySource const& source, ship::IFieldSource const& field_source,
@@ -125,13 +137,7 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
       lv->SetSensitiveDetector(sd);
     }
 
-    if (!scoring_planes_.empty()) {
-      auto* plane_sd = new ScoringPlaneSD("ScoringPlaneSD", scoring_planes_);
-      G4SDManager::GetSDMpointer()->AddNewDetector(plane_sd);
-      for (auto const& [lv, _] : scoring_planes_) {
-        lv->SetSensitiveDetector(plane_sd);
-      }
-    }
+    attach_scoring_plane_sd();
 
     // Install per-magnet G4FieldManagers on every logical volume whose name
     // contains the configured pattern. Outside these volumes Geant4 never
