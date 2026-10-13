@@ -127,15 +127,18 @@
   // FairShip's exitHadronAbsorber scoring plane for the GeoModel geometry, as
   // an entry for the geant4 module's `scoring_planes`: 1 cm behind the
   // magnetised hadron absorber, in the air gap before the first muon-shield
-  // magnet (absorber end at z = 4350 mm, magn_1 from 4550 mm), covering the
-  // muon-shield container's cross-section (±1810 × ±1700 mm, 1 mm margin).
+  // magnet (absorber end at z = 4350 mm, magn_1 from 4550 mm), with
+  // FairShip's size (3.56 m - 1 mm by 1.7 m - 1 mm half-widths, 1 mm
+  // half-thickness). That is wider than the muon-shield container
+  // (±1810 mm in x), which a scoring plane may be: it lives in its own
+  // parallel world, so it also records what passes beside the shield.
   // It records every track reaching it — muons, neutrinos and all others —
   // and stops it, so nothing is tracked beyond. Merge in a `ke_threshold`
   // (GeV) to match the run's energy cut.
   exit_hadron_absorber_plane:: {
     name: 'exit_hadron_absorber',
     id: 1,
-    half_x: 1809.0,  // mm
+    half_x: 3559.0,  // mm
     half_y: 1699.0,  // mm
     half_z: 1.0,  // mm
     after_volume: '/SHiP/muon_shield/magn_absorb',
