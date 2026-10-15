@@ -573,17 +573,22 @@ std::vector<ScoringPlaneConfig> read_scoring_planes(
   if (!entries) {
     return planes;
   }
-  for (std::size_t i = 0; i < entries->size(); ++i) {
-    auto const& entry = (*entries)[i];
+  for (auto const& entry : *entries) {
     ScoringPlaneConfig plane{
         .name = entry.get<std::string>("name", std::string{}),
-        .id = entry.get<int>("id", static_cast<int>(i)),
     };
     for (auto const& key : entry.keys()) {
       if (!known_keys.contains(key)) {
         plane_error(plane.name, "unknown key '" + key + "'");
       }
     }
+    // Required, so that a plane's id is chosen explicitly and stays the same
+    // when planes are added, removed or reordered.
+    auto const id = entry.get_if_present<int>("id");
+    if (!id) {
+      plane_error(plane.name, "missing 'id'");
+    }
+    plane.id = *id;
     read_plane_shape(entry, plane);
     if (auto const pos =
             entry.get_if_present<std::vector<double>>("position")) {

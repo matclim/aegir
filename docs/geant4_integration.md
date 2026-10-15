@@ -192,7 +192,7 @@ Each entry of `scoring_planes` takes:
 | Key | Type | Default | Description |
 |:---|:---|:---|:---|
 | `name` | string | — | Volume name; must not already exist in the geometry |
-| `id` | int | position in the list | Written to `SimHit::geometryNodeId`; unique |
+| `id` | int | — | Written to `SimHit::geometryNodeId`, telling the planes' hits apart; required and unique |
 | `shape` | string | `box` | `box` or `tube` (cylindrical shell, axis along z) |
 | `half_x`, `half_y` | double | — | Box half-widths (mm); required for a box, rejected for a tube |
 | `r_min`, `r_max` | double | — | Tube inner and outer radius (mm); required for a tube, rejected for a box |

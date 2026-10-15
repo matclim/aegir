@@ -131,15 +131,20 @@ EOF
 }
 
 expect_failure overlapping_planes "overlaps another scoring plane" \
-  "[{ name: 'a', half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1500] },
-    { name: 'b', half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1502] }]"
+  "[{ name: 'a', id: 1, half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1500] },
+    { name: 'b', id: 2, half_x: 100, half_y: 100, half_z: 5, position: [0, 0, 1502] }]"
 expect_failure beyond_world "extends beyond the world" \
-  "[{ name: 'p', half_x: 6000, half_y: 100, half_z: 1, position: [0, 0, 1500] }]"
+  "[{ name: 'p', id: 1, half_x: 6000, half_y: 100, half_z: 1, position: [0, 0, 1500] }]"
 expect_failure unknown_key "unknown key 'kil'" \
-  "[{ name: 'p', half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1500], kil: true }]"
+  "[{ name: 'p', id: 1, half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1500], kil: true }]"
+expect_failure missing_id "missing 'id'" \
+  "[{ name: 'p', half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1500] }]"
+expect_failure duplicate_id "id 1 used by more than one plane" \
+  "[{ name: 'a', id: 1, half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1500] },
+    { name: 'b', id: 1, half_x: 100, half_y: 100, half_z: 1, position: [0, 0, 1600] }]"
 expect_failure missing_volume "must be placed exactly once" \
-  "[{ name: 'p', half_x: 100, half_y: 100, half_z: 1, after_volume: 'NoSuchVolume' }]"
+  "[{ name: 'p', id: 1, half_x: 100, half_y: 100, half_z: 1, after_volume: 'NoSuchVolume' }]"
 expect_failure two_placements "must be placed exactly once" \
-  "[{ name: 'p', half_x: 100, half_y: 100, half_z: 1, after_volume: 'ScoringPlane' }]"
+  "[{ name: 'p', id: 1, half_x: 100, half_y: 100, half_z: 1, after_volume: 'ScoringPlane' }]"
 
 echo "scoring planes passed"
