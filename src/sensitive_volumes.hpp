@@ -29,9 +29,13 @@ namespace SHiP::aegir {
 
 /// One `sensitive_volumes` entry: the logical volumes whose names contain
 /// `pattern` get a sensitive detector, and their hits carry `detector_id`.
+/// With `copy_number_depth` >= 0, a hit also carries the copy number of the
+/// volume that many levels above the hit's volume (0: the volume itself) as
+/// SimHit::geometry_node_id, telling the channels of a GDML geometry apart.
 struct SensitiveVolume {
   std::string pattern;
   std::int32_t detector_id;
+  std::int32_t copy_number_depth = -1;  ///< -1: geometry_node_id stays 0
 };
 
 /// SimHit::detector_id of hits in the toy geometries' "Scoring" planes (the
@@ -138,7 +142,8 @@ inline constexpr std::int32_t kTestFixtureDetectorId = 99;
     }
     auto const object = boost::json::value_to<phlex::configuration>(entry);
     for (auto const& key : object.keys()) {
-      if (key != "pattern" && key != "detector") {
+      if (key != "pattern" && key != "detector" &&
+          key != "copy_number_depth") {
         sensitive_volume_error(i, "unknown key '" + key + "'");
       }
     }
@@ -156,8 +161,13 @@ inline constexpr std::int32_t kTestFixtureDetectorId = 99;
     } catch (std::invalid_argument const& e) {
       sensitive_volume_error(i, e.what());
     }
-    volumes.push_back(
-        {.pattern = std::move(*pattern), .detector_id = detector_id});
+    auto const depth = object.get_if_present<int>("copy_number_depth");
+    if (depth && *depth < 0) {
+      sensitive_volume_error(i, "copy_number_depth must not be negative");
+    }
+    volumes.push_back({.pattern = std::move(*pattern),
+                       .detector_id = detector_id,
+                       .copy_number_depth = depth.value_or(-1)});
   }
   return volumes;
 }

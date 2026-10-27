@@ -79,7 +79,15 @@ inline void persist_ancestry(std::vector<PlaneCrossing> const& recorded) {
   }
 }
 
-using DetectorIdMap = std::unordered_map<G4LogicalVolume*, int>;
+// What a sensitive logical volume writes into its hits: the detector id and,
+// with copy_number_depth >= 0, the copy number of the volume that many levels
+// above the hit's volume, as geometry_node_id.
+struct SensitiveInfo {
+  int detector_id = -1;
+  int copy_number_depth = -1;
+};
+
+using DetectorIdMap = std::unordered_map<G4LogicalVolume*, SensitiveInfo>;
 
 // Track, particle and pre-step-point kinematics of a hit, under `detector_id`.
 inline SimHit make_base_hit(G4Step const* step, int detector_id) {
@@ -98,13 +106,24 @@ inline SimHit make_base_hit(G4Step const* step, int detector_id) {
 }
 
 // As above, with the detector id looked up from the step's logical volume
-// (-1 if the volume is not in `detector_ids`).
+// (-1 if the volume is not in `detector_ids`), and the copy number at the
+// volume's copy_number_depth as geometry_node_id (-1 if the volume sits less
+// deep than that).
 inline SimHit make_base_hit(G4Step const* step,
                             DetectorIdMap const& detector_ids) {
-  auto* lv =
-      step->GetPreStepPoint()->GetTouchable()->GetVolume()->GetLogicalVolume();
+  auto const* touchable = step->GetPreStepPoint()->GetTouchable();
+  auto* lv = touchable->GetVolume()->GetLogicalVolume();
   auto const it = detector_ids.find(lv);
-  return make_base_hit(step, it != detector_ids.end() ? it->second : -1);
+  if (it == detector_ids.end()) {
+    return make_base_hit(step, -1);
+  }
+  auto hit = make_base_hit(step, it->second.detector_id);
+  if (auto const depth = it->second.copy_number_depth; depth >= 0) {
+    hit.geometry_node_id = depth <= touchable->GetHistoryDepth()
+                               ? touchable->GetCopyNumber(depth)
+                               : -1;
+  }
+  return hit;
 }
 
 class ScoringSD : public G4VSensitiveDetector {

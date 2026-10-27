@@ -113,6 +113,22 @@ int main() {
             mixed[2].detector_id == id(TimingDetector),
         "mixed: explicit entry");
 
+  check(mixed.size() == 3 && mixed[0].copy_number_depth == -1 &&
+            mixed[1].copy_number_depth == -1,
+        "mixed: no copy number by default");
+
+  auto const copies = read_sensitive_volumes(config(R"({"sensitive_volumes": [
+      {"pattern": "gas", "detector": "StrawTubes", "copy_number_depth": 0},
+      {"pattern": "VSensitive", "detector": "test_fixture",
+       "copy_number_depth": 2}]})"));
+  check(copies.size() == 2 && copies[0].copy_number_depth == 0 &&
+            copies[1].copy_number_depth == 2 &&
+            copies[1].detector_id == kTestFixtureDetectorId,
+        "copy_number_depth");
+  check(rejects(R"({"sensitive_volumes": [{"pattern": "gas",
+                    "detector": "StrawTubes", "copy_number_depth": -1}]})"),
+        "a negative copy_number_depth");
+
   check(read_sensitive_volumes(config(R"({"sensitive_volumes": []})")).empty(),
         "an empty list");
 

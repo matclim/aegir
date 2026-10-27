@@ -127,7 +127,9 @@ class ConfigurableDetectorConstruction : public G4VUserDetectorConstruction {
     for (auto* lv : volumes) {
       for (auto const& sv : sensitive_volumes) {
         if (G4StrUtil::contains(lv->GetName(), std::string_view{sv.pattern})) {
-          detector_ids.emplace(lv, sv.detector_id);
+          detector_ids.emplace(
+              lv, SensitiveInfo{.detector_id = sv.detector_id,
+                                .copy_number_depth = sv.copy_number_depth});
           break;
         }
       }

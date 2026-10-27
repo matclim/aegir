@@ -223,8 +223,23 @@ geometry: {
 },
 ```
 
-A pattern aegir doesn't know, an unknown detector name, or an unknown key
-stops the job while the configuration is read, before Geant4 starts. The
+An entry written out in full can also take `copy_number_depth`. The hits in
+its volumes then carry, as `geometry_node_id`, the copy number of the volume
+that many levels above the one the hit is in: 0 for the volume itself, 1 for
+its mother, and so on. A GDML geometry keeps the copy numbers of its
+`physvol`s, so this tells its channels apart, such as the tubes of a
+drift-tube layer that all share one logical volume. A hit in a volume that
+sits less deep than the depth asked for gets -1. Without the key,
+`geometry_node_id` stays 0.
+
+```jsonnet
+sensitive_volumes: [
+  { pattern: 'gas', detector: 'StrawTubes', copy_number_depth: 0 },
+],
+```
+
+A pattern aegir doesn't know, an unknown detector name, an unknown key or a
+negative `copy_number_depth` stops the job while the configuration is read, before Geant4 starts. The
 builtin geometry always uses `Scoring`, with id 99.
 
 ## Scoring planes
