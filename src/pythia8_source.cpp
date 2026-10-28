@@ -6,10 +6,12 @@
 //
 // Provides MCParticle vectors from Pythia8 in 400 GeV fixed-target mode.
 // Supports both single-threaded (serial Pythia) and multi-threaded
-// (PythiaParallel) operation, selected via config.
+// (PythiaParallel) operation, selected via config. Any Pythia8 setting can be
+// added with `pythia_settings` / `pythia_cmnd` (see pythia_settings.hpp).
 
 #include <Pythia8/Pythia.h>
 #include <Pythia8/PythiaParallel.h>
+#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <condition_variable>
@@ -29,6 +31,7 @@
 #include "mc_particle_source.hpp"
 #include "pythia_common.hpp"
 #include "pythia_philox_engine.hpp"
+#include "pythia_settings.hpp"
 #include "seed_config.hpp"
 #include "units/config_units.hpp"
 
@@ -42,6 +45,7 @@ class Pythia8Source : public phlex::source {
  public:
   Pythia8Source(std::string stage, std::string const& xml_dir,
                 SHiP::Energy beam_energy, std::string const& process,
+                SHiP::aegir::PythiaSettings const& settings,
                 SHiP::aegir::record_mode record, std::uint32_t seed)
       : stage_{std::move(stage)}, seed_{seed}, record_{record} {
     pythia_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
@@ -53,7 +57,12 @@ class Pythia8Source : public phlex::source {
     SHiP::aegir::configure_beams(*pythia_, 2212, 2212, beam_energy);
     pythia_->readString(process + " = on");
     pythia_->readString("Print:quiet = on");
-    pythia_->init();
+    SHiP::aegir::apply_pythia_settings(*pythia_, settings, "pythia8");
+    if (!pythia_->init()) {
+      throw std::runtime_error("pythia8: Pythia8 initialisation failed");
+    }
+    spdlog::info("pythia8: Pythia8 settings changed from the defaults:\n{}",
+                 SHiP::aegir::changed_pythia_settings(*pythia_));
   }
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
@@ -89,6 +98,7 @@ class Pythia8MTSource : public phlex::source {
  public:
   Pythia8MTSource(std::string stage, std::string const& xml_dir,
                   SHiP::Energy beam_energy, std::string const& process,
+                  SHiP::aegir::PythiaSettings const& settings,
                   SHiP::aegir::record_mode record, int num_threads,
                   long num_events, std::size_t max_queue_size,
                   std::uint32_t seed)
@@ -123,7 +133,11 @@ class Pythia8MTSource : public phlex::source {
         pythia.readString(
             "Random:seed = " +
             std::to_string(SHiP::aegir::pythia_seed(seed, num_threads)));
-        pythia.init();
+        SHiP::aegir::apply_pythia_settings(pythia, settings, "pythia8");
+        if (!pythia.init()) {
+          throw std::runtime_error(
+              "pythia8: PythiaParallel initialisation failed");
+        }
 
         ready_promise_.set_value();
 
@@ -248,12 +262,17 @@ PHLEX_REGISTER_SOURCE(s, config) {
   auto const parallel = config.get<bool>("parallel", false);
   auto const record = SHiP::aegir::parse_record_mode(
       config.get<std::string>("record", std::string{"final_state"}), "pythia8");
+  SHiP::aegir::PythiaSettings const settings{
+      .lines = config.get<std::vector<std::string>>("pythia_settings",
+                                                    std::vector<std::string>{}),
+      .cmnd_file = config.get<std::string>("pythia_cmnd", std::string{}),
+  };
   auto seed = SHiP::aegir::resolve_seed(config, "pythia8");
   auto stage = SHiP::aegir::source_stage(config, "pythia8");
 
   if (!parallel) {
     s.add_source<Pythia8Source>("pythia8", std::move(stage), xml_dir,
-                                beam_energy, process, record, seed);
+                                beam_energy, process, settings, record, seed);
   } else {
     auto const num_threads = config.get<int>("num_threads", 4);
     auto const num_events = config.get<long>("num_events", 100);
@@ -263,8 +282,9 @@ PHLEX_REGISTER_SOURCE(s, config) {
                                std::to_string(queue_size));
     }
 
-    s.add_source<Pythia8MTSource>(
-        "pythia8", std::move(stage), xml_dir, beam_energy, process, record,
-        num_threads, num_events, static_cast<std::size_t>(queue_size), seed);
+    s.add_source<Pythia8MTSource>("pythia8", std::move(stage), xml_dir,
+                                  beam_energy, process, settings, record,
+                                  num_threads, num_events,
+                                  static_cast<std::size_t>(queue_size), seed);
   }
 }

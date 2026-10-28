@@ -7,6 +7,12 @@
 // Observers for simulation output:
 //   - RNTuple parallel writer for MCParticles and SimResult
 //   - Validation histograms
+//
+// `run_info` (optional string): stored as a TNamed of that name in the RNTuple
+// file once the dataset is committed, so every output carries the job that
+// made it. lib.with_run_info() in workflows/lib.libsonnet fills it with the
+// whole job configuration as JSON (generator settings, Geant4 parameters and
+// commands, seeds).
 
 #include <oneapi/tbb/concurrent_queue.h>
 #include <oneapi/tbb/enumerable_thread_specific.h>
@@ -40,7 +46,9 @@
 #include <utility>
 #include <vector>
 
+#include "TFile.h"
 #include "TH1D.h"
+#include "TNamed.h"
 #include "hepmc_status.hpp"
 #include "math_utils.hpp"
 #include "phlex/core/product_selector.hpp"
@@ -136,6 +144,34 @@ class FillStatePool {
   tbb::concurrent_bounded_queue<std::unique_ptr<FillState>> states_;
 };
 
+// Add the run_info TNamed to a committed RNTuple file. Called from the writers'
+// destructors, so it reports failures instead of throwing.
+void write_run_info(std::string const& filename, std::string const& run_info) {
+  if (run_info.empty()) {
+    return;
+  }
+  try {
+    std::unique_ptr<TFile> file{TFile::Open(filename.c_str(), "UPDATE")};
+    if (!file || file->IsZombie()) {
+      spdlog::error("sim_output_module: cannot reopen '{}' to add run_info",
+                    filename);
+      return;
+    }
+    TNamed info{"run_info", run_info.c_str()};
+    if (info.Write() <= 0) {
+      spdlog::error("sim_output_module: writing run_info to '{}' failed",
+                    filename);
+      return;
+    }
+    file->Close();
+    spdlog::info("sim_output_module: run_info ({} bytes) added to '{}'",
+                 run_info.size(), filename);
+  } catch (std::exception const& e) {
+    spdlog::error("sim_output_module: adding run_info to '{}': {}", filename,
+                  e.what());
+  }
+}
+
 using HistD = RHist<double>;
 using FillerD = RHistConcurrentFiller<double>;
 using ContextD = RHistFillContext<double>;
@@ -162,7 +198,8 @@ double pdg_bin(std::int32_t pdg) {
 class MCRNTupleWriter {
  public:
   MCRNTupleWriter(std::string filename, std::size_t cluster_mib,
-                  std::size_t n_contexts) {
+                  std::size_t n_contexts, std::string run_info)
+      : filename_{filename}, run_info_{std::move(run_info)} {
     auto model = RNTupleModel::CreateBare();
     // The phlex event number: the multi-threaded writer stores events in the
     // order they finish, so entry order says nothing about which event it is.
@@ -198,7 +235,18 @@ class MCRNTupleWriter {
     state.ctx->Fill(*state.entry);
   }
 
+  ~MCRNTupleWriter() {
+    // Commit the dataset (fill contexts first) before reopening the file.
+    pool_.reset();
+    writer_.reset();
+    write_run_info(filename_, run_info_);
+  }
+  MCRNTupleWriter(MCRNTupleWriter const&) = delete;
+  MCRNTupleWriter& operator=(MCRNTupleWriter const&) = delete;
+
  private:
+  std::string filename_;
+  std::string run_info_;
   // Member order matters: the pool (holding all fill contexts) must be
   // destroyed before the writer, which commits the dataset in its destructor
   // ("all fill contexts must be destroyed before CommitDataset() is called").
@@ -210,8 +258,11 @@ class MCRNTupleWriter {
 class SimRNTupleWriter {
  public:
   SimRNTupleWriter(std::string filename, bool filter_empty,
-                   std::size_t cluster_mib, std::size_t n_contexts)
-      : filter_empty_{filter_empty} {
+                   std::size_t cluster_mib, std::size_t n_contexts,
+                   std::string run_info)
+      : filter_empty_{filter_empty},
+        filename_{filename},
+        run_info_{std::move(run_info)} {
     auto model = RNTupleModel::CreateBare();
     model->MakeField<std::uint64_t>("event_number");
     model->MakeField<SHiP::EventHeader>("event_header");
@@ -268,8 +319,19 @@ class SimRNTupleWriter {
     state.ctx->Fill(*state.entry);
   }
 
+  ~SimRNTupleWriter() {
+    // Commit the dataset (fill contexts first) before reopening the file.
+    pool_.reset();
+    writer_.reset();
+    write_run_info(filename_, run_info_);
+  }
+  SimRNTupleWriter(SimRNTupleWriter const&) = delete;
+  SimRNTupleWriter& operator=(SimRNTupleWriter const&) = delete;
+
  private:
   bool filter_empty_;
+  std::string filename_;
+  std::string run_info_;
   // Member order matters: the pool (holding all fill contexts) must be
   // destroyed before the writer, which commits the dataset in its destructor
   // ("all fill contexts must be destroyed before CommitDataset() is called").
@@ -551,6 +613,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
   auto const max_threads = tbb::global_control::active_value(
       tbb::global_control::max_allowed_parallelism);
   auto const cluster_mib = config.get<int>("cluster_size_mib", 32);
+  auto const run_info = config.get<std::string>("run_info", std::string{});
   auto const n_contexts = config.get<int>(
       "fill_contexts", static_cast<int>(std::min<std::size_t>(
                            4, std::max<std::size_t>(1, max_threads))));
@@ -581,9 +644,9 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
                              .layer = "event"_id,
                              .suffix = "sim_result"_id});
   } else if (mode == "mc_only") {
-    auto writer = m.make<MCRNTupleWriter>(rntuple_file,
-                                          static_cast<std::size_t>(cluster_mib),
-                                          static_cast<std::size_t>(n_contexts));
+    auto writer = m.make<MCRNTupleWriter>(
+        rntuple_file, static_cast<std::size_t>(cluster_mib),
+        static_cast<std::size_t>(n_contexts), run_info);
     // Unlimited on purpose: excess write() calls block on the pool lease,
     // which throttles the framework when the writer is the bottleneck. phlex
     // has no in-flight-event limit, so a concurrency-limited node would let
@@ -607,7 +670,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
 
     auto writer = m.make<SimRNTupleWriter>(
         rntuple_file, filter_empty, static_cast<std::size_t>(cluster_mib),
-        static_cast<std::size_t>(n_contexts));
+        static_cast<std::size_t>(n_contexts), run_info);
     // Unlimited on purpose: excess write() calls block on the pool lease,
     // which throttles the framework when the writer is the bottleneck. phlex
     // has no in-flight-event limit, so a concurrency-limited node would let

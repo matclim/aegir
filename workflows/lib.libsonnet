@@ -82,6 +82,10 @@
     vertex_z: -2000.0,  // mm
   },
 
+  // Both Pythia8 sources take any Pythia8 setting: `pythia_settings`, a list
+  // of 'Key = value' lines, and/or `pythia_cmnd`, a command file; applied
+  // after aegir's own settings, before init (docs/physics_parameters.md).
+  //
   // `record` selects how much of the generator's event record is emitted:
   // 'final_state' (only what Geant4 will track) or 'full' (the whole record,
   // with HepMC statuses and mother links intact — several times larger; the
@@ -122,6 +126,9 @@
   // Without a `seed`, each run draws a random one (logged at startup, so a
   // run can be reproduced after the fact). Merge one in for reproducible
   // output, e.g. lib.geant4 { seed: 12345 }.
+  // Physics parameters: hadronic_parameters, hadronic_flags,
+  // developer_parameters, developer_flags and commands (Geant4 UI commands),
+  // applied in PreInit (docs/physics_parameters.md).
   geant4:: {
     cpp: 'geant4_module',
     physics_list: 'FTFP_BERT',
@@ -185,4 +192,44 @@
     rntuple_file: rntuple_file,
     histo_file: histo_file,
   },
+
+  // ── physics parameters ─────────────────────────────────────────────────
+  // A parameter point, e.g. for a tune: the keys it may set on a Pythia8
+  // source and on the geant4 module (docs/physics_parameters.md).
+  //   {
+  //     pythia: { pythia_settings: ['StringFlav:probStoUD = 0.22'] },
+  //     geant4: { hadronic_flags: { apply_factor_xs: true },
+  //               hadronic_parameters: { xs_factor_pion_inelastic: 1.05 },
+  //               commands: ['/physics_lists/em/GammaToMuons true'] },
+  //   }
+  tune_keys:: {
+    pythia: ['pythia_settings', 'pythia_cmnd'],
+    geant4: ['physics_list', 'hadronic_parameters', 'hadronic_flags',
+             'developer_parameters', 'developer_flags', 'commands'],
+  },
+
+  // The part `part` ('pythia' or 'geant4') of a parameter point, checked
+  // against tune_keys so that a misspelt key fails instead of being ignored.
+  // Merge it into the block: lib.fixed_target { ... } + lib.tune_part(t, 'pythia').
+  tune_part(tune, part)::
+    local unknown_parts = std.setDiff(std.set(std.objectFields(tune)),
+                                      std.set(std.objectFields($.tune_keys)));
+    local block = std.get(tune, part, {});
+    local unknown = std.setDiff(std.set(std.objectFields(block)),
+                                std.set($.tune_keys[part]));
+    assert std.length(unknown_parts) == 0 :
+           'parameter point: unknown part(s) ' + std.join(', ', unknown_parts) +
+           ' (expected pythia, geant4)';
+    assert std.length(unknown) == 0 :
+           'parameter point: unknown ' + part + ' key(s) ' + std.join(', ', unknown) +
+           ' (allowed: ' + std.join(', ', $.tune_keys[part]) + ')';
+    block,
+
+  // The workflow with its whole configuration stored in the output file as
+  // the TNamed `run_info` (JSON), so the output records the parameter point,
+  // seeds and settings that made it. `output` names the sim_output_module.
+  with_run_info(workflow, output='output')::
+    workflow + {
+      modules+: { [output]+: { run_info: std.manifestJsonMinified(workflow) } },
+    },
 }

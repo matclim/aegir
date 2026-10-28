@@ -191,6 +191,15 @@ Three geometry providers are available, selectable via workflow configuration:
 
 See [docs/geant4_integration.md](docs/geant4_integration.md) for details on the direct worker integration strategy.
 
+## Physics parameters
+
+Any Pythia8 setting (`pythia_settings`, `pythia_cmnd`) and the Geant4 hadronic
+parameters, FTF model parameters and UI commands (`hadronic_parameters`,
+`hadronic_flags`, `developer_parameters`, `developer_flags`, `commands`) can be
+set from the job configuration; `lib.with_run_info` stores the whole
+configuration in the output file. See
+[docs/physics_parameters.md](docs/physics_parameters.md).
+
 ## Benchmarking
 
 See `docs/benchmarks.md` for details. The benchmark targets need `hyperfine`

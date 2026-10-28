@@ -305,6 +305,14 @@ add_test(
     NAME generator_status
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generator_status.sh
 )
+# Physics parameters end to end: Pythia8 settings, Geant4 parameters and
+# commands reach the generators and Geant4, run_info is stored in the output,
+# and bad settings fail cleanly.
+add_test(
+    NAME physics_parameters
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/physics_parameters.sh
+)
+
 # Scoring planes: neutrinos and muons fired through planes placed in the
 # builtin geometry are recorded where the geometry says they cross, the
 # killing plane stops them, and bad plane configurations fail cleanly.
@@ -339,3 +347,18 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 add_test(NAME sensitive_volumes COMMAND sensitive_volumes_test)
+
+# Physics parameters: hadronic parameters, FTF developer parameters and UI
+# commands from the configuration reach Geant4 in PreInit, and unknown names,
+# rejected values and failing commands are errors rather than silently ignored
+# or a process abort.
+add_executable(geant4_tuning_test tests/geant4_tuning_test.cpp)
+target_link_libraries(
+    geant4_tuning_test
+    PRIVATE phlex::configuration SHiP::Units Geant4::G4physicslists
+)
+target_include_directories(
+    geant4_tuning_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_test(NAME geant4_tuning COMMAND geant4_tuning_test)

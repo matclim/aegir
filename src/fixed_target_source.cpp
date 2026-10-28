@@ -11,8 +11,11 @@
 // - Multiple physics processes matching FairShip defaults
 // - Every random number an event uses is keyed to its event number, so
 //   the output does not depend on the order events are processed in
+// - Any Pythia8 setting can be added with `pythia_settings` / `pythia_cmnd`,
+//   applied to both instances (see pythia_settings.hpp)
 
 #include <Pythia8/Pythia.h>
+#include <spdlog/spdlog.h>
 
 #include <SHiP/MCParticle.hpp>
 #include <SHiP/random/philox_rng.hpp>
@@ -20,12 +23,14 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "mc_particle_source.hpp"
 #include "pythia_common.hpp"
 #include "pythia_philox_engine.hpp"
+#include "pythia_settings.hpp"
 #include "seed_config.hpp"
 #include "units/config_units.hpp"
 
@@ -48,6 +53,7 @@ class FixedTargetSource : public phlex::source {
                     SHiP::Length target_z_start, SHiP::Length target_z_end,
                     SHiP::Length interaction_length,
                     SHiP::aegir::PythiaTime tau0_threshold,
+                    SHiP::aegir::PythiaSettings const& settings,
                     SHiP::aegir::record_mode record, std::uint32_t seed)
       : stage_{std::move(stage)},
         target_z_{target_z},
@@ -76,7 +82,13 @@ class FixedTargetSource : public phlex::source {
     configure_processes(*pythia_pp_);
     pythia_pp_->readString("Print:quiet = on");
     SHiP::aegir::stabilise_long_lived(*pythia_pp_, tau0_threshold);
-    pythia_pp_->init();
+    // After stabilise_long_lived, so particle-data settings can override it.
+    SHiP::aegir::apply_pythia_settings(*pythia_pp_, settings,
+                                       "fixed_target (pp)");
+    if (!pythia_pp_->init()) {
+      throw std::runtime_error(
+          "fixed_target: Pythia8 (pp) initialisation failed");
+    }
 
     // Neutron target (p-n)
     pythia_pn_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
@@ -85,7 +97,16 @@ class FixedTargetSource : public phlex::source {
     configure_processes(*pythia_pn_);
     pythia_pn_->readString("Print:quiet = on");
     SHiP::aegir::stabilise_long_lived(*pythia_pn_, tau0_threshold);
-    pythia_pn_->init();
+    SHiP::aegir::apply_pythia_settings(*pythia_pn_, settings,
+                                       "fixed_target (pn)");
+    if (!pythia_pn_->init()) {
+      throw std::runtime_error(
+          "fixed_target: Pythia8 (pn) initialisation failed");
+    }
+    // The two instances differ only in Beams:idB.
+    spdlog::info(
+        "fixed_target: Pythia8 settings changed from the defaults (pp):\n{}",
+        SHiP::aegir::changed_pythia_settings(*pythia_pp_));
   }
 
   std::vector<SHiP::MCParticle> generate(phlex::data_cell_index const& id) {
@@ -170,11 +191,16 @@ PHLEX_REGISTER_SOURCE(s, config) {
   auto const record = SHiP::aegir::parse_record_mode(
       config.get<std::string>("record", std::string{"final_state"}),
       "fixed_target");
+  SHiP::aegir::PythiaSettings const settings{
+      .lines = config.get<std::vector<std::string>>("pythia_settings",
+                                                    std::vector<std::string>{}),
+      .cmnd_file = config.get<std::string>("pythia_cmnd", std::string{}),
+  };
   auto seed = SHiP::aegir::resolve_seed(config, "fixed_target");
   auto stage = SHiP::aegir::source_stage(config, "fixed_target");
 
   s.add_source<FixedTargetSource>(
       "fixed_target", std::move(stage), xml_dir, beam_energy, target_z,
       target_a, target_z_start, target_z_end, interaction_length,
-      tau0_threshold, record, seed);
+      tau0_threshold, settings, record, seed);
 }

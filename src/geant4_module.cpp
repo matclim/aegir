@@ -16,6 +16,10 @@
 //     geometry-creating thread per process (aegir-genie issue #11)
 //   - Per phlex-thread: G4WorkerRunManagerKernel + G4EventManager for tracking
 //   - No G4VUserPrimaryGeneratorAction — events built directly from MCParticle
+//   - Physics parameters and UI commands from the configuration
+//     (hadronic_parameters, hadronic_flags, developer_parameters,
+//     developer_flags, commands) are applied on the master in PreInit, see
+//     geant4_tuning.hpp and docs/physics_parameters.md
 
 #include <Random123/philox.h>
 #include <spdlog/spdlog.h>
@@ -72,6 +76,7 @@
 #include "chrome_trace.hpp"
 #include "detector_construction.hpp"
 #include "geant4_sim_core.hpp"
+#include "geant4_tuning.hpp"
 #include "geometry_source.hpp"
 #include "hepmc_status.hpp"
 #include "math_utils.hpp"
@@ -182,6 +187,8 @@ struct Geant4SimConfig {
   std::string export_gdml;
   // Log a progress line every this many simulated events (0 disables).
   int progress_interval = 100;
+  // Physics parameters and UI commands applied in PreInit (geant4_tuning.hpp).
+  SHiP::aegir::Geant4Tuning tuning;
 };
 
 class Geant4Sim {
@@ -480,6 +487,10 @@ class Geant4Sim {
       rm->SetNumberOfThreads(cfg_.concurrency);
       rm->SetUserInitialization(detector_);
 
+      // Before the physics list exists: its constructors read the transition
+      // energies, and G4HadronicParameters accepts changes only in PreInit.
+      SHiP::aegir::apply_hadronic_parameters(cfg_.tuning);
+
       // Physics list already validated in init_master before the run manager
       // was constructed, so GetReferencePhysList won't hit its unknown-list
       // abort.
@@ -501,6 +512,10 @@ class Geant4Sim {
       ui->ApplyCommand("/run/verbose " + std::to_string(cfg_.verbosity));
       ui->ApplyCommand("/event/verbose 0");
       ui->ApplyCommand("/tracking/verbose 0");
+
+      // After the physics list exists (its messengers, e.g. the EM extra
+      // physics', are created with it), before initialisation (PreInit).
+      SHiP::aegir::apply_geant4_commands(cfg_.tuning);
 
       rm->Initialize();
       rm->RunInitialization();
@@ -779,7 +794,24 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
       .scoring_planes = read_scoring_planes(config),
       .export_gdml = config.get<std::string>("export_gdml", std::string{}),
       .progress_interval = config.get<int>("progress_interval", 100),
+      .tuning = SHiP::aegir::read_geant4_tuning(config),
   };
+
+  for (auto const& [name, value] : cfg.tuning.hadronic_parameters) {
+    spdlog::info("geant4_module: hadronic_parameters.{} = {}", name, value);
+  }
+  for (auto const& [name, value] : cfg.tuning.hadronic_flags) {
+    spdlog::info("geant4_module: hadronic_flags.{} = {}", name, value);
+  }
+  for (auto const& [name, value] : cfg.tuning.developer_parameters) {
+    spdlog::info("geant4_module: developer_parameters.{} = {}", name, value);
+  }
+  for (auto const& [name, value] : cfg.tuning.developer_flags) {
+    spdlog::info("geant4_module: developer_flags.{} = {}", name, value);
+  }
+  for (auto const& command : cfg.tuning.commands) {
+    spdlog::info("geant4_module: command '{}'", command);
+  }
 
   // The pruning needs every ancestor recorded: with a particle_ke_cut, a
   // skipped ancestor would leave its descendants' parent ids dangling.
