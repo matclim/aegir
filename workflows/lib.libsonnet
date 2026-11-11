@@ -111,6 +111,9 @@
     interaction_length: 191.9,  // mm
     tau0_threshold: 1.0,  // mm/c
     record: 'final_state',
+    // true: one proton-nucleus (Z, A) collision per event with Pythia's
+    // heavy-ion model Angantyr instead of a p-p or p-n collision
+    nucleus: false,
   },
 
   // Neutrino interactions pre-generated with GENIE, read from a rootracker

@@ -15,6 +15,7 @@
 #include <Pythia8/Pythia.h>
 
 #include <SHiP/Units.hpp>
+#include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -55,6 +56,69 @@ void configure_beams(Pythia& pythia, int idA, int idB,
       "Beams:eA = " +
       std::to_string(beam_energy.numerical_value_in(SHiP::units::GeV)));
   pythia.readString("Beams:eB = 0.");
+}
+
+// PDG code of the nucleus (Z, A) in its ground state: 100ZZZAAA0.
+inline int nucleus_pdg(int z, int a) {
+  if (z < 1 || a < z || a > 999) {
+    throw std::invalid_argument("nucleus_pdg: invalid nucleus Z = " +
+                                std::to_string(z) +
+                                ", A = " + std::to_string(a));
+  }
+  return 1000000000 + z * 10000 + a * 10;
+}
+
+// A beam of energy `beam_energy` on a nucleon at rest, both of mass
+// `nucleon_mass` (GeV): the nucleon-nucleon centre-of-mass energy sqrt(s_NN)
+// and the velocity of that frame in the lab, along the beam. Heavy-ion models
+// (Angantyr) take the energy per nucleon pair; the event is generated in this
+// frame and boosted to the lab.
+struct NucleonPairFrame {
+  double ecm;   // GeV
+  double beta;  // of the centre-of-mass frame in the lab, along +z
+};
+
+inline NucleonPairFrame nucleon_pair_frame(SHiP::Energy beam_energy,
+                                           double nucleon_mass) {
+  double const e = beam_energy.numerical_value_in(SHiP::units::GeV);
+  double const m = nucleon_mass;
+  if (!(m > 0) || !(e > m)) {
+    throw std::invalid_argument(
+        "nucleon_pair_frame: the beam energy must exceed the nucleon mass");
+  }
+  double const p = std::sqrt(e * e - m * m);
+  return {.ecm = std::sqrt(2 * m * m + 2 * e * m), .beta = p / (e + m)};
+}
+
+// Configure a proton beam on a nucleus at rest for Pythia's heavy-ion model
+// (Angantyr): generated in the nucleon-nucleon centre-of-mass frame
+// (frameType 1), which the caller boosts to the lab with the returned beta.
+// Pythia's fixed-target frame (frameType 2, eB = 0) does not give Angantyr a
+// valid nucleon-nucleon system: its sub-collision set-up fails. A nucleus
+// unknown to Pythia (such as 96Mo) makes its event check fail.
+template <typename Pythia>
+NucleonPairFrame configure_nucleus_target(Pythia& pythia, int target_z,
+                                          int target_a,
+                                          SHiP::Energy beam_energy) {
+  auto const frame =
+      nucleon_pair_frame(beam_energy, pythia.particleData.m0(2212));
+  int const id = nucleus_pdg(target_z, target_a);
+  // Pythia knows only a few nuclei (e.g. 208Pb, 197Au, 63Cu); any other
+  // target is defined here, with the mass A u as Pythia's own nuclei
+  // (u = 0.931494 GeV), so that its event record passes Pythia's checks.
+  if (!pythia.particleData.isParticle(id)) {
+    std::string const name =
+        "Z" + std::to_string(target_z) + "A" + std::to_string(target_a);
+    pythia.readString(std::to_string(id) + ":all = " + name + " " + name +
+                      "bar 0 " + std::to_string(3 * target_z) + " 0 " +
+                      std::to_string(0.931494 * target_a));
+  }
+  pythia.readString("Beams:idA = 2212");
+  pythia.readString("Beams:idB = " + std::to_string(id));
+  pythia.readString("Beams:frameType = 1");
+  pythia.readString("Beams:eCM = " + std::to_string(frame.ecm));
+  pythia.readString("HeavyIon:mode = 1");
+  return frame;
 }
 
 // Make long-lived particles (tau0 above threshold) stable so a downstream

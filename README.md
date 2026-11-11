@@ -24,7 +24,7 @@ An [automatic class reference](https://shipsoft.github.io/aegir/) is built using
 |--------|------|-------------|
 | `particle_gun_source` | Source | Configurable single-particle gun with Random123 RNG |
 | `pythia8_source` | Source | Pythia8 fixed-target p-p (serial or PythiaParallel) |
-| `fixed_target_source` | Source | Dual-target Pythia8 (p-p/p-n) with interaction point sampling |
+| `fixed_target_source` | Source | Dual-target Pythia8 (p-p/p-n) with interaction point sampling; optionally p-nucleus with Angantyr ([docs/nucleus_target.md](docs/nucleus_target.md)) |
 | `geometry_builtin_provider` | Provider | W target + Si scoring planes (test geometry) |
 | `geometry_gdml_provider` | Provider | GDML file loader |
 | `geometry_geomodel_provider` | Provider | GeoModel .db via SHiPGeometryService (optional) |

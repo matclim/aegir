@@ -362,3 +362,22 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 add_test(NAME geant4_tuning COMMAND geant4_tuning_test)
+
+# Proton-nucleus set-up of fixed_target_source (nucleus: true): the nucleus
+# PDG code, the nucleon-nucleon centre-of-mass frame and its boost to the lab,
+# and the settings written for Angantyr, on a stand-in for Pythia.
+add_executable(nucleus_frame_test tests/nucleus_frame_test.cpp)
+target_link_libraries(nucleus_frame_test PRIVATE SHiP::Units Pythia8::Pythia8)
+target_include_directories(
+    nucleus_frame_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_test(NAME nucleus_frame COMMAND nucleus_frame_test)
+
+# Proton-nucleus collisions end to end: fixed_target with nucleus: true
+# (Angantyr, p + 96Mo at 400 GeV) runs and gives lab-frame events: nothing
+# far backward, a leading particle near the beam energy, no nuclei.
+add_test(
+    NAME nucleus_target
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/nucleus_target.sh
+)

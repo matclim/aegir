@@ -13,6 +13,12 @@
 //   the output does not depend on the order events are processed in
 // - Any Pythia8 setting can be added with `pythia_settings` / `pythia_cmnd`,
 //   applied to both instances (see pythia_settings.hpp)
+// - nucleus: true replaces the p-p/p-n pair by one proton-nucleus collision
+//   with Pythia's heavy-ion model Angantyr, generated in the nucleon-nucleon
+//   centre-of-mass frame and boosted to the lab. Its internal generators draw
+//   from Pythia's own random engine (Random:seed from the job seed), so these
+//   events are reproducible for a given seed in the order the (serial) source
+//   generates them, but are not keyed to the event number.
 
 #include <Pythia8/Pythia.h>
 #include <spdlog/spdlog.h>
@@ -54,7 +60,8 @@ class FixedTargetSource : public phlex::source {
                     SHiP::Length interaction_length,
                     SHiP::aegir::PythiaTime tau0_threshold,
                     SHiP::aegir::PythiaSettings const& settings,
-                    SHiP::aegir::record_mode record, std::uint32_t seed)
+                    SHiP::aegir::record_mode record, std::uint32_t seed,
+                    bool nucleus)
       : stage_{std::move(stage)},
         target_z_{target_z},
         target_a_{target_a},
@@ -62,7 +69,8 @@ class FixedTargetSource : public phlex::source {
         target_z_end_{target_z_end},
         interaction_length_{interaction_length},
         record_{record},
-        seed_{seed} {
+        seed_{seed},
+        nucleus_{nucleus} {
     // Both instances draw from Philox engines that generate() re-keys to the
     // event number before every event (see pythia_philox_engine.hpp). Pythia
     // also draws while initialising; distinct init sub-streams keep the two
@@ -74,6 +82,39 @@ class FixedTargetSource : public phlex::source {
           engine->reset(seed, SHiP::aegir::kPythiaInitStream, init_substream);
           pythia.setRndmEnginePtr(engine);
         };
+
+    if (nucleus_) {
+      // One proton-nucleus collision per event (Angantyr), in pythia_pp_.
+      pythia_pp_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
+      attach_engine(*pythia_pp_, engine_pp_, 0);
+      auto const frame = SHiP::aegir::configure_nucleus_target(
+          *pythia_pp_, target_z, target_a, beam_energy);
+      boost_beta_ = frame.beta;
+      // Minimum bias only: the photon and electroweak processes of the p-N
+      // set-up are not part of Angantyr's sub-collision model.
+      pythia_pp_->readString("SoftQCD:inelastic = on");
+      // Angantyr's sub-generators use Pythia's own engine, not the one
+      // attached above: seed it from the job seed.
+      pythia_pp_->readString("Random:setSeed = on");
+      pythia_pp_->readString("Random:seed = " +
+                             std::to_string(SHiP::aegir::pythia_seed(seed)));
+      pythia_pp_->readString("Print:quiet = on");
+      SHiP::aegir::stabilise_long_lived(*pythia_pp_, tau0_threshold);
+      SHiP::aegir::apply_pythia_settings(*pythia_pp_, settings,
+                                         "fixed_target (p-A)");
+      if (!pythia_pp_->init()) {
+        throw std::runtime_error(
+            "fixed_target: Pythia8 (p-A, Angantyr) initialisation failed");
+      }
+      spdlog::info(
+          "fixed_target: p + nucleus (Z = {}, A = {}) with Angantyr, "
+          "sqrt(s_NN) = {:.3f} GeV, boost to the lab beta = {:.6f}",
+          target_z, target_a, frame.ecm, frame.beta);
+      spdlog::info(
+          "fixed_target: Pythia8 settings changed from the defaults (p-A):\n{}",
+          SHiP::aegir::changed_pythia_settings(*pythia_pp_));
+      return;
+    }
 
     // Proton target (p-p)
     pythia_pp_ = std::make_unique<Pythia8::Pythia>(xml_dir, false);
@@ -115,19 +156,31 @@ class FixedTargetSource : public phlex::source {
     // default).
     SHiP::random::PhiloxRng rng{seed_, 0xF14ED0A7, event_number};
 
+    if (nucleus_) {
+      // Same interaction-point sampling as below (the rng's first draw is
+      // the target choice there, unused here).
+      (void)rng.uniform();
+      SHiP::Length const z_interaction = sample_interaction_z(rng);
+      engine_pp_->reset(seed_, SHiP::aegir::kPythiaEventStream, event_number);
+      SHiP::aegir::next_event(*pythia_pp_, "FixedTargetSource (p-A)");
+      // centre-of-mass frame -> lab (target nucleus at rest); vertices too
+      pythia_pp_->event.bst(0., 0., boost_beta_);
+      auto particles = SHiP::aegir::extract_particles<SHiP::MCParticle>(
+          pythia_pp_->event, z_interaction, record_);
+      // Nuclear remnants (spectators of the target, at rest) are not
+      // tracked: Geant4 has no particle for them by PDG code.
+      std::erase_if(particles, [](SHiP::MCParticle const& p) {
+        return p.status == 1 && std::abs(p.pdg_code) >= 1000000000;
+      });
+      return particles;
+    }
+
     // Select target: proton with probability Z/A, else neutron
     double const z_over_a =
         static_cast<double>(target_z_) / static_cast<double>(target_a_);
     bool const proton_target = rng.uniform() < z_over_a;
 
-    // Sample interaction point z from truncated exponential
-    SHiP::Length const target_length = target_z_end_ - target_z_start_;
-    double const u = rng.uniform();
-    double const exp_ratio = std::exp(-(target_length / interaction_length_)
-                                           .numerical_value_in(mp_units::one));
-    SHiP::Length const z_interaction =
-        target_z_start_ -
-        interaction_length_ * std::log(1.0 - u * (1.0 - exp_ratio));
+    SHiP::Length const z_interaction = sample_interaction_z(rng);
 
     auto& pythia = proton_target ? *pythia_pp_ : *pythia_pn_;
     // Key Pythia's draws to this event, whatever order events arrive in.
@@ -149,6 +202,16 @@ class FixedTargetSource : public phlex::source {
   }
 
  private:
+  // Interaction point z from the truncated exponential in the target.
+  SHiP::Length sample_interaction_z(SHiP::random::PhiloxRng& rng) const {
+    SHiP::Length const target_length = target_z_end_ - target_z_start_;
+    double const u = rng.uniform();
+    double const exp_ratio = std::exp(-(target_length / interaction_length_)
+                                           .numerical_value_in(mp_units::one));
+    return target_z_start_ -
+           interaction_length_ * std::log(1.0 - u * (1.0 - exp_ratio));
+  }
+
   std::string stage_;
   int target_z_;
   int target_a_;
@@ -163,6 +226,8 @@ class FixedTargetSource : public phlex::source {
   std::unique_ptr<Pythia8::Pythia> pythia_pn_;
   SHiP::aegir::record_mode record_;
   std::uint32_t seed_;
+  bool nucleus_;
+  double boost_beta_ = 0.;
 };
 
 }  // namespace
@@ -196,11 +261,12 @@ PHLEX_REGISTER_SOURCE(s, config) {
                                                     std::vector<std::string>{}),
       .cmnd_file = config.get<std::string>("pythia_cmnd", std::string{}),
   };
+  auto const nucleus = config.get<bool>("nucleus", false);
   auto seed = SHiP::aegir::resolve_seed(config, "fixed_target");
   auto stage = SHiP::aegir::source_stage(config, "fixed_target");
 
   s.add_source<FixedTargetSource>(
       "fixed_target", std::move(stage), xml_dir, beam_energy, target_z,
       target_a, target_z_start, target_z_end, interaction_length,
-      tau0_threshold, settings, record, seed);
+      tau0_threshold, settings, record, seed, nucleus);
 }
